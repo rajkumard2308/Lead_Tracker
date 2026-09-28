@@ -557,10 +557,31 @@ st.markdown(
 
     .stButton > button {
         border-radius: 8px;
-
         font-weight: 600;
-
         font-size: 12px;
+    }
+
+    /* ========================================================
+       HEADER ADD LEAD BUTTON
+    ======================================================== */
+
+    .add-lead-header-button {
+        width: 100%;
+        min-width: 150px;
+        padding-top: 2px;
+    }
+
+    .add-lead-header-button button {
+        width: 100% !important;
+        min-width: 150px !important;
+        height: 42px !important;
+        padding: 0 16px !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
     }
 
 
@@ -576,6 +597,15 @@ st.markdown(
 
         .selected-status-title {
             font-size: 17px;
+        }
+
+        .add-lead-header-button {
+            min-width: 130px;
+        }
+
+        .add-lead-header-button button {
+            min-width: 130px !important;
+            font-size: 12px !important;
         }
 
     }
@@ -667,9 +697,9 @@ def delete_lead_dialog(row_number, lead_name):
 # ============================================================
 
 header_left, header_right = st.columns(
-    [5, 1]
+    [5.8, 1.2],
+    gap="medium",
 )
-
 
 with header_left:
 
@@ -689,6 +719,11 @@ with header_left:
 
 with header_right:
 
+    st.markdown(
+        '<div class="add-lead-header-button">',
+        unsafe_allow_html=True,
+    )
+
     if st.button(
         "➕ Add Lead",
         type="primary",
@@ -701,6 +736,11 @@ with header_right:
         ] = True
 
         st.rerun()
+
+    st.markdown(
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ============================================================
@@ -758,38 +798,54 @@ if st.session_state.get(
     False,
 ):
 
-    with st.expander(
-        "➕ Add New Lead",
-        expanded=True,
-    ):
+    st.markdown(
+        """
+        <div style="
+            font-size:18px;
+            font-weight:700;
+            color:#172033;
+            margin-top:10px;
+            margin-bottom:12px;
+        ">
+            ➕ Add New Lead
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        new_lead = render_add_lead_form()
+    new_lead = render_add_lead_form()
 
-        if new_lead is not None:
+    if new_lead is not None:
 
-            try:
+        try:
 
-                add_lead(
-                    new_lead
-                )
+            add_lead(
+                new_lead
+            )
 
-                st.session_state[
-                    "show_add_form"
-                ] = False
+            st.session_state[
+                "show_add_form"
+            ] = False
 
-                st.cache_data.clear()
+            st.cache_data.clear()
 
-                st.success(
-                    "Lead added successfully."
-                )
+            st.success(
+                "Lead added successfully."
+            )
 
-                st.rerun()
+            st.rerun()
 
-            except Exception as exc:
+        except ValueError as exc:
 
-                st.error(
-                    f"Could not add lead: {exc}"
-                )
+            st.warning(
+                f"⚠️ {exc}"
+            )
+
+        except Exception as exc:
+
+            st.error(
+                f"Could not add lead: {exc}"
+            )
 
 
 # ============================================================
@@ -957,6 +1013,7 @@ with date_filter_col2:
             min_value=min_lead_date,
             max_value=max_lead_date,
             disabled=not filter_by_date,
+            format="DD-MM-YYYY",
             key="filter_date_from",
         )
 
@@ -986,6 +1043,7 @@ with date_filter_col3:
             min_value=min_lead_date,
             max_value=max_lead_date,
             disabled=not filter_by_date,
+            format="DD-MM-YYYY",
             key="filter_date_to",
         )
 
