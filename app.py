@@ -631,6 +631,12 @@ def delete_lead_dialog(row_number, lead_name):
 
                 st.rerun()
 
+            except ValueError as exc:
+
+                st.warning(
+                    f"⚠️ {exc}"
+                )
+
             except Exception as exc:
 
                 st.error(
