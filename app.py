@@ -552,6 +552,16 @@ st.markdown(
 
 
     /* ========================================================
+       EDIT DIALOG
+    ======================================================== */
+
+    div[data-testid="stDialog"] [data-testid="stVerticalBlockBorderWrapper"] {
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    /* ========================================================
        BUTTONS
     ======================================================== */
 
@@ -780,6 +790,7 @@ required_columns = [
     "Last Follow Up",
     "Follow Up Count",
     "Remarks",
+    "Total Amount",
     "_sheet_row",
 ]
 
@@ -1420,13 +1431,52 @@ with tab_analytics:
 
 
 # ============================================================
-# EDIT LEAD
+# EDIT LEAD DIALOG
+# ============================================================
+
+@st.dialog("✏️ Edit Lead", width="large")
+def edit_lead_dialog(record, row_number):
+
+    updated_lead = render_edit_lead_form(record)
+
+    if updated_lead is not None:
+
+        try:
+
+            update_lead(
+                int(row_number),
+                updated_lead,
+            )
+
+            st.session_state["editing_row"] = None
+            st.cache_data.clear()
+
+            st.success("Lead updated successfully.")
+            st.rerun()
+
+        except Exception as exc:
+
+            st.error(
+                f"Could not update lead: {exc}"
+            )
+
+    if st.button(
+        "Cancel",
+        use_container_width=True,
+        key=f"cancel_edit_dialog_{row_number}",
+    ):
+
+        st.session_state["editing_row"] = None
+        st.rerun()
+
+
+# ============================================================
+# OPEN EDIT DIALOG
 # ============================================================
 
 editing_row = st.session_state.get(
     "editing_row"
 )
-
 
 if editing_row is not None:
 
@@ -1435,76 +1485,16 @@ if editing_row is not None:
         == int(editing_row)
     ]
 
-
     if not edit_record.empty:
 
-        st.divider()
-
-        st.subheader(
-            "✏️ Edit Lead"
+        edit_lead_dialog(
+            edit_record.iloc[0].to_dict(),
+            int(editing_row),
         )
-
-
-        updated_lead = (
-            render_edit_lead_form(
-                edit_record.iloc[0].to_dict()
-            )
-        )
-
-
-        # ----------------------------------------------------
-        # SAVE
-        # ----------------------------------------------------
-
-        if updated_lead is not None:
-
-            try:
-
-                update_lead(
-                    int(editing_row),
-                    updated_lead,
-                )
-
-                st.session_state[
-                    "editing_row"
-                ] = None
-
-                st.cache_data.clear()
-
-                st.success(
-                    "Lead updated successfully."
-                )
-
-                st.rerun()
-
-            except Exception as exc:
-
-                st.error(
-                    f"Could not update lead: {exc}"
-                )
-
-
-        # ----------------------------------------------------
-        # CANCEL
-        # ----------------------------------------------------
-
-        if st.button(
-            "Cancel Edit",
-            key="cancel_edit_lead",
-        ):
-
-            st.session_state[
-                "editing_row"
-            ] = None
-
-            st.rerun()
-
 
     else:
 
-        st.session_state[
-            "editing_row"
-        ] = None
+        st.session_state["editing_row"] = None
 
 
 # ============================================================
