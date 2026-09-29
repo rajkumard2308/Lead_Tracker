@@ -61,6 +61,9 @@ if "deleting_row" not in st.session_state:
 if "filter_by_date" not in st.session_state:
     st.session_state["filter_by_date"] = False
 
+if "edit_success_message" not in st.session_state:
+    st.session_state["edit_success_message"] = None
+
 
 # ============================================================
 # PROFESSIONAL UI CSS
@@ -552,16 +555,6 @@ st.markdown(
 
 
     /* ========================================================
-       EDIT DIALOG
-    ======================================================== */
-
-    div[data-testid="stDialog"] [data-testid="stVerticalBlockBorderWrapper"] {
-        border: 0 !important;
-        box-shadow: none !important;
-        background: transparent !important;
-    }
-
-    /* ========================================================
        BUTTONS
     ======================================================== */
 
@@ -703,6 +696,49 @@ def delete_lead_dialog(row_number, lead_name):
 
 
 # ============================================================
+# EDIT DIALOG
+# ============================================================
+
+@st.dialog("✏️ Edit Lead")
+def edit_lead_dialog(row_number, record):
+
+    updated_lead = render_edit_lead_form(record)
+
+    if updated_lead is not None:
+
+        try:
+
+            update_lead(
+                int(row_number),
+                updated_lead,
+            )
+
+            st.session_state["editing_row"] = None
+            st.cache_data.clear()
+
+            st.session_state[
+                "edit_success_message"
+            ] = "✅ Lead updated successfully."
+
+            st.rerun()
+
+        except Exception as exc:
+
+            st.error(
+                f"Could not update lead: {exc}"
+            )
+
+    if st.button(
+        "Cancel",
+        use_container_width=True,
+        key=f"cancel_edit_{row_number}",
+    ):
+
+        st.session_state["editing_row"] = None
+        st.rerun()
+
+
+# ============================================================
 # HEADER
 # ============================================================
 
@@ -754,6 +790,19 @@ with header_right:
 
 
 # ============================================================
+# EDIT SUCCESS MESSAGE
+# ============================================================
+
+if st.session_state.get("edit_success_message"):
+
+    st.success(
+        st.session_state["edit_success_message"]
+    )
+
+    st.session_state["edit_success_message"] = None
+
+
+# ============================================================
 # GOOGLE SHEETS
 # ============================================================
 
@@ -790,7 +839,6 @@ required_columns = [
     "Last Follow Up",
     "Follow Up Count",
     "Remarks",
-    "Total Amount",
     "_sheet_row",
 ]
 
@@ -1085,25 +1133,27 @@ if search.strip():
 
     search_value = search.strip().lower()
 
-    search_mask = (
-        filtered_df
-        .astype(str)
-        .apply(
-            lambda col:
-            col.str
-            .lower()
-            .str.contains(
-                search_value,
-                na=False,
-                regex=False,
-            )
-        )
-        .any(axis=1)
-    )
+    # Search only the fields users actually search.
+    # This avoids converting every column in the DataFrame to strings
+    # on every Streamlit rerun and is much faster on Streamlit Cloud.
+    search_mask = pd.Series(False, index=filtered_df.index)
 
-    filtered_df = filtered_df[
-        search_mask
-    ]
+    for column in ("Name", "Number", "Email"):
+
+        if column in filtered_df.columns:
+            search_mask |= (
+                filtered_df[column]
+                .fillna("")
+                .astype(str)
+                .str.lower()
+                .str.contains(
+                    search_value,
+                    na=False,
+                    regex=False,
+                )
+            )
+
+    filtered_df = filtered_df.loc[search_mask]
 
 
 # ------------------------------------------------------------
@@ -1431,52 +1481,13 @@ with tab_analytics:
 
 
 # ============================================================
-# EDIT LEAD DIALOG
-# ============================================================
-
-@st.dialog("✏️ Edit Lead", width="large")
-def edit_lead_dialog(record, row_number):
-
-    updated_lead = render_edit_lead_form(record)
-
-    if updated_lead is not None:
-
-        try:
-
-            update_lead(
-                int(row_number),
-                updated_lead,
-            )
-
-            st.session_state["editing_row"] = None
-            st.cache_data.clear()
-
-            st.success("Lead updated successfully.")
-            st.rerun()
-
-        except Exception as exc:
-
-            st.error(
-                f"Could not update lead: {exc}"
-            )
-
-    if st.button(
-        "Cancel",
-        use_container_width=True,
-        key=f"cancel_edit_dialog_{row_number}",
-    ):
-
-        st.session_state["editing_row"] = None
-        st.rerun()
-
-
-# ============================================================
-# OPEN EDIT DIALOG
+# EDIT LEAD POPUP
 # ============================================================
 
 editing_row = st.session_state.get(
     "editing_row"
 )
+
 
 if editing_row is not None:
 
@@ -1485,16 +1496,20 @@ if editing_row is not None:
         == int(editing_row)
     ]
 
-    if not edit_record.empty:
+    if edit_record.empty:
 
-        edit_lead_dialog(
-            edit_record.iloc[0].to_dict(),
-            int(editing_row),
+        st.session_state["editing_row"] = None
+
+        st.warning(
+            "The selected lead could not be found in Google Sheets."
         )
 
     else:
 
-        st.session_state["editing_row"] = None
+        edit_lead_dialog(
+            int(editing_row),
+            edit_record.iloc[0].to_dict(),
+        )
 
 
 # ============================================================
