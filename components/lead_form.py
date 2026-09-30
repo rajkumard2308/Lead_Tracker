@@ -295,8 +295,9 @@ def render_add_lead_form():
 
     booking_date = st.date_input(
         "Booking Confirmation Date",
-        key="add_booking_date",
+        value=None,
         format="DD-MM-YYYY",
+        key="add_booking_date",
     )
 
     a, b = st.columns(2)

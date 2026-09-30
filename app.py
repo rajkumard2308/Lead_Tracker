@@ -780,6 +780,11 @@ with header_right:
             "show_add_form"
         ] = True
 
+        # Start every NEW lead with an empty Booking Confirmation Date.
+        # Streamlit remembers widget values by key, so remove the
+        # previous value before opening a fresh Add Lead form.
+        st.session_state.pop("add_booking_date", None)
+
         st.rerun()
 
     st.markdown(
@@ -884,6 +889,10 @@ if st.session_state.get(
             st.session_state[
                 "show_add_form"
             ] = False
+
+            # Clear the Booking Confirmation Date from the previous
+            # Add Lead form so the next new lead starts empty.
+            st.session_state.pop("add_booking_date", None)
 
             st.success(
                 "Lead added successfully."
@@ -1543,3 +1552,4 @@ st.caption(
     f"{len(df)} leads • "
     "Google Sheets is the shared source of truth."
 )
+
