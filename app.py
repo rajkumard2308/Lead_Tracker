@@ -26,6 +26,7 @@ from components.board import (
 from components.lead_form import (
     render_add_lead_form,
     render_edit_lead_form,
+    clear_edit_form_state,
 )
 
 from components.analytics import (
@@ -660,8 +661,6 @@ def delete_lead_dialog(row_number, lead_name):
                     "deleting_row"
                 ] = None
 
-                st.cache_data.clear()
-
                 st.rerun()
 
             except ValueError as exc:
@@ -713,8 +712,8 @@ def edit_lead_dialog(row_number, record):
                 updated_lead,
             )
 
+            clear_edit_form_state(int(row_number))
             st.session_state["editing_row"] = None
-            st.cache_data.clear()
 
             st.session_state[
                 "edit_success_message"
@@ -886,8 +885,6 @@ if st.session_state.get(
                 "show_add_form"
             ] = False
 
-            st.cache_data.clear()
-
             st.success(
                 "Lead added successfully."
             )
@@ -1008,8 +1005,8 @@ st.markdown(
 # ------------------------------------------------------------
 
 lead_date_series = pd.to_datetime(
-    df["Date"].astype(str).str.strip(),
-    dayfirst=True,
+    df["Date"],
+    format="%d-%m-%Y",
     errors="coerce",
 )
 
@@ -1206,8 +1203,8 @@ if filter_by_date:
 
     # Convert current filtered rows to dates
     current_dates = pd.to_datetime(
-        filtered_df["Date"].astype(str).str.strip(),
-        dayfirst=True,
+        filtered_df["Date"],
+        format="%d-%m-%Y",
         errors="coerce",
     )
 
@@ -1249,10 +1246,10 @@ if filter_by_date:
         if date_to is not None:
 
             current_dates = pd.to_datetime(
-                filtered_df["Date"].astype(str).str.strip(),
-                dayfirst=True,
-                errors="coerce",
-            )
+        filtered_df["Date"],
+        format="%d-%m-%Y",
+        errors="coerce",
+    )
 
             filtered_df = filtered_df[
                 current_dates.dt.date <= date_to
@@ -1304,10 +1301,33 @@ tab_board, tab_analytics = st.tabs(
 
 with tab_board:
 
+    # Remember the last board status so changing a status
+    # tab cannot reopen a stale Edit dialog.
+    last_board_status = st.session_state.get(
+        "_last_board_status"
+    )
+
     result = render_board(
         filtered_df
     )
 
+    current_board_status = st.session_state.get(
+        "selected_status"
+    )
+
+    if (
+        last_board_status is not None
+        and current_board_status != last_board_status
+        and st.session_state.get("editing_row") is not None
+    ):
+        clear_edit_form_state(
+            int(st.session_state["editing_row"])
+        )
+        st.session_state["editing_row"] = None
+
+    st.session_state[
+        "_last_board_status"
+    ] = current_board_status
 
     if result:
 
@@ -1326,9 +1346,13 @@ with tab_board:
 
         if action == "edit":
 
+            row_number = int(row_number)
+
+            clear_edit_form_state(row_number)
+
             st.session_state[
                 "editing_row"
-            ] = int(row_number)
+            ] = row_number
 
             st.rerun()
 
@@ -1393,8 +1417,6 @@ with tab_board:
                     int(row_number),
                     update_data,
                 )
-
-                st.cache_data.clear()
 
                 st.success(
                     "Lead updated successfully."
