@@ -162,6 +162,21 @@ def render_lead_card(record):
         ) or ""
     )
 
+    total_amount_raw = record.get(
+        "Total Amount",
+        ""
+    )
+
+    try:
+        total_amount = float(
+            str(total_amount_raw)
+            .replace(",", "")
+            .replace("₹", "")
+            .strip()
+        ) if str(total_amount_raw).strip() else 0.0
+    except (ValueError, TypeError):
+        total_amount = 0.0
+
     inquiry_date = str(
         record.get(
             "Date",
@@ -269,6 +284,12 @@ def render_lead_card(record):
 
                 st.caption(
                     f"✉️ {html.escape(email)}"
+                )
+
+            # Converted lead amount appears directly below email.
+            if current_status == "Converted":
+                st.markdown(
+                    f"**₹ {total_amount:,.2f}**"
                 )
 
         # ============================================

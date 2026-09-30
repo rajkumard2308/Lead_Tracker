@@ -199,6 +199,23 @@ def render_add_lead_form():
         None,
     )
 
+    # These two date fields must start empty for every new lead.
+    # st.date_input otherwise defaults to today's date.
+    st.session_state.setdefault(
+        "add_booking_date",
+        None,
+    )
+
+    st.session_state.setdefault(
+        "add_last_follow",
+        None,
+    )
+
+    st.session_state.setdefault(
+        "add_followup_count",
+        "",
+    )
+
     a, b = st.columns(2)
 
     with a:
@@ -296,8 +313,8 @@ def render_add_lead_form():
     booking_date = st.date_input(
         "Booking Confirmation Date",
         value=None,
-        format="DD-MM-YYYY",
         key="add_booking_date",
+        format="DD-MM-YYYY",
     )
 
     a, b = st.columns(2)
@@ -305,17 +322,24 @@ def render_add_lead_form():
     with a:
         last_follow = st.date_input(
             "Last Follow-up Done On",
+            value=None,
             key="add_last_follow",
             format="DD-MM-YYYY",
         )
 
-    with b:
+    # Follow-up Count is relevant only for Follow up status.
+    if status == "Follow up":
         count = st.selectbox(
             "Follow-up Count",
             [""] + FOLLOW_UP_OPTIONS,
-            index=1,
+            index=1 if not st.session_state.get("add_followup_count") else 0,
             key="add_followup_count",
         )
+    else:
+        # Clear any previous Follow-up Count when status changes
+        # to a non-follow-up status.
+        st.session_state["add_followup_count"] = ""
+        count = ""
 
     remarks = st.text_area(
         "Remarks",
@@ -335,12 +359,25 @@ def render_add_lead_form():
             key="add_total_amount",
         )
 
-    submitted = st.button(
-        "➕ Add Lead",
-        type="primary",
-        use_container_width=True,
-        key="submit_add_lead",
-    )
+    add_col, cancel_col = st.columns(2)
+
+    with add_col:
+        submitted = st.button(
+            "➕ Add Lead",
+            type="primary",
+            use_container_width=True,
+            key="submit_add_lead",
+        )
+
+    with cancel_col:
+        cancelled = st.button(
+            "✖ Cancel",
+            use_container_width=True,
+            key="cancel_add_lead",
+        )
+
+    if cancelled:
+        return {"__action__": "cancel"}
 
     if not submitted:
         return None
@@ -359,7 +396,7 @@ def render_add_lead_form():
         )
         return None
 
-    if last_follow and not count:
+    if status == "Follow up" and last_follow and not count:
         st.error(
             "Please select the follow-up count."
         )
@@ -713,12 +750,16 @@ def render_edit_lead_form(record):
             format="DD-MM-YYYY",
         )
 
-    with b:
-        count = st.selectbox(
-            "Follow-up Count",
-            [""] + FOLLOW_UP_OPTIONS,
-            key=follow_count_key,
-        )
+    if status == "Follow up":
+        with b:
+            count = st.selectbox(
+                "Follow-up Count",
+                [""] + FOLLOW_UP_OPTIONS,
+                key=follow_count_key,
+            )
+    else:
+        st.session_state[follow_count_key] = ""
+        count = ""
 
     remarks = st.text_area(
         "Remarks",
@@ -768,7 +809,7 @@ def render_edit_lead_form(record):
         )
         return None
 
-    if last_follow and not count:
+    if status == "Follow up" and last_follow and not count:
         st.error(
             "Please select the follow-up count."
         )

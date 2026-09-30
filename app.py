@@ -67,6 +67,33 @@ if "edit_success_message" not in st.session_state:
 
 
 # ============================================================
+# ADD FORM STATE CLEANUP
+# ============================================================
+
+ADD_FORM_KEYS = [
+    "add_inquiry_date",
+    "add_client_name",
+    "add_phone",
+    "add_email",
+    "add_check_in_date",
+    "add_check_out_date",
+    "add_agent",
+    "add_status",
+    "add_source",
+    "add_booking_date",
+    "add_last_follow",
+    "add_followup_count",
+    "add_remarks",
+    "add_total_amount",
+]
+
+
+def clear_add_form_state():
+    for key in ADD_FORM_KEYS:
+        st.session_state.pop(key, None)
+
+
+# ============================================================
 # PROFESSIONAL UI CSS
 # ============================================================
 
@@ -776,14 +803,12 @@ with header_right:
         key="header_add_lead",
     ):
 
+        if not st.session_state.get("show_add_form", False):
+            clear_add_form_state()
+
         st.session_state[
             "show_add_form"
         ] = True
-
-        # Start every NEW lead with an empty Booking Confirmation Date.
-        # Streamlit remembers widget values by key, so remove the
-        # previous value before opening a fresh Add Lead form.
-        st.session_state.pop("add_booking_date", None)
 
         st.rerun()
 
@@ -880,19 +905,24 @@ if st.session_state.get(
 
     if new_lead is not None:
 
+        # The Add Lead form can request cancellation without
+        # sending the cancel action to Google Sheets.
+        if new_lead.get("__action__") == "cancel":
+            clear_add_form_state()
+            st.session_state["show_add_form"] = False
+            st.rerun()
+
         try:
 
             add_lead(
                 new_lead
             )
 
+            clear_add_form_state()
+
             st.session_state[
                 "show_add_form"
             ] = False
-
-            # Clear the Booking Confirmation Date from the previous
-            # Add Lead form so the next new lead starts empty.
-            st.session_state.pop("add_booking_date", None)
 
             st.success(
                 "Lead added successfully."
