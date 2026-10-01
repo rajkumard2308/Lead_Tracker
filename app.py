@@ -1153,6 +1153,119 @@ with date_filter_col3:
             key="filter_date_to_empty",
         )
 
+# ============================================================
+# STAY DATE FILTER
+# ============================================================
+
+st.markdown(
+    "<div class='date-filter-title'>🏨 Stay Date Filter</div>",
+    unsafe_allow_html=True,
+)
+
+
+# ------------------------------------------------------------
+# CONVERT CHECK-IN / CHECK-OUT DATES
+# ------------------------------------------------------------
+
+check_in_series = pd.to_datetime(
+    df["Check In Date"].astype(str).str.strip(),
+    format="%d-%m-%Y",
+    errors="coerce",
+)
+
+check_out_series = pd.to_datetime(
+    df["Check Out Date"].astype(str).str.strip(),
+    format="%d-%m-%Y",
+    errors="coerce",
+)
+
+
+valid_check_in_dates = check_in_series.dropna()
+
+
+# ------------------------------------------------------------
+# STAY FILTER COLUMNS
+# ------------------------------------------------------------
+
+stay_col1, stay_col2, stay_col3 = st.columns(
+    [1.2, 1.6, 1.6]
+)
+
+
+# ------------------------------------------------------------
+# ENABLE STAY DATE FILTER
+# ------------------------------------------------------------
+
+with stay_col1:
+
+    filter_by_stay_date = st.checkbox(
+        "Filter by Stay Date",
+        key="filter_by_stay_date",
+    )
+
+
+# ------------------------------------------------------------
+# CHECK-IN DATE
+# ------------------------------------------------------------
+
+with stay_col2:
+
+    if not valid_check_in_dates.empty:
+
+        min_check_in_date = (
+            valid_check_in_dates
+            .min()
+            .date()
+        )
+
+        max_check_in_date = (
+            valid_check_in_dates
+            .max()
+            .date()
+        )
+
+        check_in_filter = st.date_input(
+            "Check-in Date *",
+            value=min_check_in_date,
+            min_value=min_check_in_date,
+            max_value=max_check_in_date,
+            disabled=not filter_by_stay_date,
+            format="DD-MM-YYYY",
+            key="filter_check_in_date",
+        )
+
+    else:
+
+        check_in_filter = None
+
+        st.date_input(
+            "Check-in Date *",
+            value=None,
+            disabled=True,
+            format="DD-MM-YYYY",
+            key="filter_check_in_date_empty",
+        )
+
+
+# ------------------------------------------------------------
+# CHECK-OUT DATE - OPTIONAL
+# ------------------------------------------------------------
+
+with stay_col3:
+
+    check_out_filter = st.date_input(
+        "Check-out Date (Optional)",
+        value=None,
+        min_value=(
+            check_in_filter
+            if filter_by_stay_date
+            and check_in_filter is not None
+            else None
+        ),
+        disabled=not filter_by_stay_date,
+        format="DD-MM-YYYY",
+        key="filter_check_out_date",
+    )
 
 # ============================================================
 # APPLY FILTERS
@@ -1294,6 +1407,61 @@ if filter_by_date:
                 current_dates.dt.date <= date_to
             ]
 
+# ============================================================
+# APPLY STAY DATE FILTER
+# ============================================================
+
+if filter_by_stay_date:
+
+    # --------------------------------------------------------
+    # CHECK-IN DATE IS MANDATORY
+    # --------------------------------------------------------
+
+    if check_in_filter is None:
+
+        st.error(
+            "⚠️ Please select a Check-in Date."
+        )
+
+        filtered_df = filtered_df.iloc[0:0]
+
+    else:
+
+        current_check_in_dates = pd.to_datetime(
+            filtered_df["Check In Date"]
+            .astype(str)
+            .str.strip(),
+            format="%d-%m-%Y",
+            errors="coerce",
+        )
+
+        # ----------------------------------------------------
+        # FILTER BY CHECK-IN DATE
+        # ----------------------------------------------------
+
+        filtered_df = filtered_df[
+            current_check_in_dates.dt.date
+            == check_in_filter
+        ]
+
+        # ----------------------------------------------------
+        # FILTER BY CHECK-OUT DATE ONLY IF SELECTED
+        # ----------------------------------------------------
+
+        if check_out_filter is not None:
+
+            current_check_out_dates = pd.to_datetime(
+                filtered_df["Check Out Date"]
+                .astype(str)
+                .str.strip(),
+                format="%d-%m-%Y",
+                errors="coerce",
+            )
+
+            filtered_df = filtered_df[
+                current_check_out_dates.dt.date
+                == check_out_filter
+            ]
 
 # ============================================================
 # FILTER SUMMARY
