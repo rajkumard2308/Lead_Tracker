@@ -308,8 +308,20 @@ def render_add_lead_form():
         source = st.selectbox(
             "Lead Source",
             SOURCES,
-            key="add_source",
+            key="lead_source",
         )
+
+        custom_source = ""
+
+        if source == "Custom":
+            custom_source = st.text_input(
+                "Custom Source",
+                placeholder="Enter source, e.g. Instagram, Facebook, Website...",
+                key="custom_source",
+            ).strip()
+
+            if custom_source:
+                source = custom_source
 
     booking_date = st.date_input(
         "Booking Confirmation Date",
@@ -544,17 +556,25 @@ def render_edit_lead_form(record):
             else AGENTS[0]
         )
 
-        current_status = str(
-            record.get("Status", "")
+        current_source = str(
+            record.get("Source", "")
             or ""
         )
 
         st.session_state[
-            status_key
+            source_key
         ] = (
-            current_status
-            if current_status in STATUSES
-            else STATUSES[0]
+            current_source
+            if current_source in SOURCES
+            else "Custom"
+        )
+
+        st.session_state[
+            f"{source_key}_custom"
+        ] = (
+            current_source
+            if current_source not in SOURCES
+            else ""
         )
 
         current_source = str(
@@ -728,6 +748,19 @@ def render_edit_lead_form(record):
             key=source_key,
         )
 
+        if source == "Custom":
+            custom_source = st.text_input(
+                "Custom Source",
+                value=st.session_state.get(
+                    f"{source_key}_custom",
+                    "",
+                ),
+                placeholder="e.g. Instagram, Facebook, Website...",
+                key=f"{source_key}_custom_input",
+            ).strip()
+
+            source = custom_source
+
     # -----------------------------------------------------
     # Booking date
     # -----------------------------------------------------
@@ -813,6 +846,12 @@ def render_edit_lead_form(record):
     if status == "Follow up" and last_follow and not count:
         st.error(
             "Please select the follow-up count."
+        )
+        return None
+
+    if not source.strip():
+        st.error(
+            "Please enter a custom source."
         )
         return None
 

@@ -14,7 +14,7 @@ STATUSES = [
 ]
 
 AGENTS = ["Shweta", "Mayank", "Punya"]
-SOURCES = ["Whatsapp business", "Eazotel", "Meta Park Cafe", "Meta EBC", "AiSensy", "Call", "Other"]
+SOURCES = ["Whatsapp business", "Eazotel", "Meta Park Cafe", "Meta EBC", "AiSensy", "Call", "Custom"]
 FOLLOW_UP_OPTIONS = [f"Follow up {i}" for i in range(1, 21)]
 
 HEADERS = [

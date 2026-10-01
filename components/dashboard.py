@@ -191,9 +191,14 @@ def render_dashboard(df):
         counts.get("Follow up", 0)
     )
 
+    # Show converted leads as:
+    #   CONVERTED
+    #   9 / 97
+    #   ↑ 9.3%
+    # where 9 is converted leads and 97 is total leads.
     c[3].metric(
         "CONVERTED",
-        converted,
+        f"{converted} / {total}",
         f"{rate:.1f}%"
     )
 

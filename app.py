@@ -13,6 +13,7 @@ from google_sheet import (
     add_lead,
     update_lead,
     delete_lead,
+    add_leads_bulk,
     _get_sheet_values,
     _get_sheet_headers,
 )
@@ -34,6 +35,8 @@ from components.lead_form import (
 from components.analytics import (
     render_analytics,
 )
+
+from components.bulk_upload import render_bulk_upload
 
 
 # ============================================================
@@ -72,6 +75,9 @@ if "filter_by_date" not in st.session_state:
 
 if "edit_success_message" not in st.session_state:
     st.session_state["edit_success_message"] = None
+
+if "show_bulk_form" not in st.session_state:
+    st.session_state["show_bulk_form"] = False
 
 
 # ============================================================
@@ -119,6 +125,11 @@ def close_edit_form():
 
     st.session_state["editing_row"] = None
     st.session_state["edit_dialog_open"] = False
+
+
+def close_bulk_form():
+    st.session_state["show_bulk_form"] = False
+    st.session_state.pop("bulk_lead_file", None)
 
 
 # ============================================================
@@ -795,78 +806,37 @@ def edit_lead_dialog(row_number, record):
 # HEADER
 # ============================================================
 
-header_left, header_right = st.columns(
-    [5.8, 1.2],
-    gap="medium",
-)
+header_left, header_right = st.columns([5.0, 2.0], gap="medium")
 
 with header_left:
-
     st.markdown(
         """
-        <div class="main-title">
-            📈 2026 Lead Conversion Board
-        </div>
-
-        <div class="sub-title">
-            Pipeline Tracking, Conversion Velocity & Follow-Up Management
-        </div>
+        <div class="main-title">📈 2026 Lead Conversion Board</div>
+        <div class="sub-title">Pipeline Tracking, Conversion Velocity & Follow-Up Management</div>
         """,
         unsafe_allow_html=True,
     )
 
-
 with header_right:
+    add_col, bulk_col = st.columns(2)
 
-    st.markdown(
-        '<div class="add-lead-header-button">',
-        unsafe_allow_html=True,
-    )
+    with add_col:
+        if st.button("➕ Add Lead", type="primary", use_container_width=True, key="header_add_lead"):
+            close_edit_form()
+            close_bulk_form()
+            st.session_state["deleting_row"] = None
+            clear_add_form_state()
+            st.session_state["show_add_form"] = True
+            st.session_state["add_form_open"] = True
+            st.rerun()
 
-    if st.button(
-        "➕ Add Lead",
-        type="primary",
-        use_container_width=True,
-        key="header_add_lead",
-    ):
-
-        # Always start a fresh Add Lead form.
-        # Also close any stale Edit/Delete UI state so dialogs
-        # cannot reappear after opening or closing Add Lead.
-        close_edit_form()
-        st.session_state["deleting_row"] = None
-        clear_add_form_state()
-
-        st.session_state["show_add_form"] = True
-        st.session_state["add_form_open"] = True
-
-        st.rerun()
-
-    st.markdown(
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-# ============================================================
-# DATA REFRESH
-# ============================================================
-
-# Data is cached for 5 minutes to avoid repeated Google Sheets
-# API calls during normal Streamlit reruns. Use this button when
-# you need the latest spreadsheet data immediately.
-refresh_col1, refresh_col2 = st.columns([8, 1])
-
-with refresh_col2:
-    if st.button(
-        "🔄 Refresh",
-        use_container_width=True,
-        help="Reload the latest data from Google Sheets",
-    ):
-        get_leads.clear()
-        _get_sheet_values.clear()
-        _get_sheet_headers.clear()
-        st.rerun()
+    with bulk_col:
+        if st.button("📥 Bulk Add", use_container_width=True, key="header_bulk_add"):
+            close_edit_form()
+            close_add_form()
+            st.session_state["deleting_row"] = None
+            st.session_state["show_bulk_form"] = True
+            st.rerun()
 
 
 # ============================================================
@@ -920,18 +890,50 @@ required_columns = [
     "Follow Up Count",
     "Remarks",
     "_sheet_row",
-    "_date_dt",
-    "_check_in_dt",
-    "_check_out_dt",
-    "_status_norm",
-    "_agent_norm",
-    "_source_norm",
 ]
 
 for column in required_columns:
 
     if column not in df.columns:
         df[column] = ""
+
+
+# ============================================================
+# DATA REFRESH
+# ============================================================
+
+refresh_col1, refresh_col2 = st.columns([8, 1])
+with refresh_col2:
+    if st.button("🔄 Refresh", use_container_width=True, key="refresh_data"):
+        get_leads.clear()
+        _get_sheet_values.clear()
+        _get_sheet_headers.clear()
+        st.rerun()
+
+
+# ============================================================
+# BULK ADD LEADS
+# ============================================================
+
+if st.session_state.get("show_bulk_form", False):
+    st.markdown("### 📥 Bulk Add Leads")
+    bulk_result = render_bulk_upload(df)
+
+    if bulk_result is not None:
+        if bulk_result.get("__action__") == "cancel":
+            close_bulk_form()
+            st.rerun()
+
+        if bulk_result.get("__action__") == "add_bulk":
+            try:
+                count = add_leads_bulk(bulk_result["leads"])
+                close_bulk_form()
+                st.success(f"✅ {count} leads added successfully.")
+                st.rerun()
+            except ValueError as exc:
+                st.warning(f"⚠️ {exc}")
+            except Exception as exc:
+                st.error(f"Could not add bulk leads: {exc}")
 
 
 # ============================================================
@@ -1095,7 +1097,11 @@ st.markdown(
 # CONVERT LEAD DATE
 # ------------------------------------------------------------
 
-lead_date_series = df["_date_dt"]
+lead_date_series = pd.to_datetime(
+    df["Date"],
+    format="%d-%m-%Y",
+    errors="coerce",
+)
 
 
 valid_lead_dates = lead_date_series.dropna()
@@ -1215,9 +1221,17 @@ st.markdown(
 # CONVERT CHECK-IN / CHECK-OUT DATES
 # ------------------------------------------------------------
 
-check_in_series = df["_check_in_dt"]
+check_in_series = pd.to_datetime(
+    df["Check In Date"].astype(str).str.strip(),
+    format="%d-%m-%Y",
+    errors="coerce",
+)
 
-check_out_series = df["_check_out_dt"]
+check_out_series = pd.to_datetime(
+    df["Check Out Date"].astype(str).str.strip(),
+    format="%d-%m-%Y",
+    errors="coerce",
+)
 
 
 valid_check_in_dates = check_in_series.dropna()
@@ -1312,9 +1326,26 @@ with stay_col3:
 # ============================================================
 
 # Normalize common filter columns once per rerun.
-status_series = df["_status_norm"]
-agent_series = df["_agent_norm"]
-source_series = df["_source_norm"]
+status_series = (
+    df["Status"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+agent_series = (
+    df["Agent"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+source_series = (
+    df["Source"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
 
 
 # ============================================================

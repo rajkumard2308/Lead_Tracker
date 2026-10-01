@@ -315,7 +315,7 @@ def _mapping(headers):
     }
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def _get_sheet_values():
     """
     Read unformatted Google Sheet values.
@@ -381,50 +381,7 @@ def get_leads():
         if column not in df.columns:
             df[column] = ""
 
-    # Precompute values used by the Streamlit filters. These are
-    # calculated once per cache refresh instead of on every rerun.
-    df["_date_dt"] = pd.to_datetime(
-        df["Date"],
-        format="%d-%m-%Y",
-        errors="coerce",
-    )
-
-    df["_check_in_dt"] = pd.to_datetime(
-        df["Check In Date"],
-        format="%d-%m-%Y",
-        errors="coerce",
-    )
-
-    df["_check_out_dt"] = pd.to_datetime(
-        df["Check Out Date"],
-        format="%d-%m-%Y",
-        errors="coerce",
-    )
-
-    df["_status_norm"] = (
-        df["Status"].fillna("").astype(str).str.strip()
-    )
-
-    df["_agent_norm"] = (
-        df["Agent"].fillna("").astype(str).str.strip()
-    )
-
-    df["_source_norm"] = (
-        df["Source"].fillna("").astype(str).str.strip()
-    )
-
-    return df[
-        EXPECTED_COLUMNS
-        + [
-            "_sheet_row",
-            "_date_dt",
-            "_check_in_dt",
-            "_check_out_dt",
-            "_status_norm",
-            "_agent_norm",
-            "_source_norm",
-        ]
-    ]
+    return df[EXPECTED_COLUMNS + ["_sheet_row"]]
 
 
 def _phone_exists(phone, exclude_row=None):
@@ -504,6 +461,59 @@ def add_lead(lead):
 
     _clear_data_caches()
 
+
+
+def add_leads_bulk(leads):
+    """Append multiple validated leads in one Google Sheets request."""
+    if not leads:
+        return 0
+
+    ws = get_worksheet()
+    values = _get_sheet_values()
+    headers = list(values[0]) if values else list(HEADERS)
+    mapping = _mapping(headers)
+
+    # Final duplicate protection against current sheet data and
+    # duplicates inside the same upload.
+    existing_phones = set()
+    if values:
+        phone_column = mapping.get("Number")
+        if phone_column:
+            for row in values[1:]:
+                if len(row) >= phone_column:
+                    normalized = normalize_phone(row[phone_column - 1])
+                    if normalized:
+                        existing_phones.add(normalized)
+
+    rows = []
+    batch_phones = set()
+
+    for lead in leads:
+        phone = normalize_phone(lead.get("Number", ""))
+        if phone and (phone in existing_phones or phone in batch_phones):
+            raise ValueError(
+                f"Duplicate phone number found during bulk insert: {phone}"
+            )
+
+        row = [""] * len(headers)
+        for field, value in lead.items():
+            if field.startswith("__"):
+                continue
+            column = mapping.get(field)
+            if column:
+                row[column - 1] = _clean(value)
+
+        rows.append(row)
+        if phone:
+            batch_phones.add(phone)
+
+    ws.append_rows(
+        rows,
+        value_input_option="RAW",
+    )
+
+    _clear_data_caches()
+    return len(rows)
 
 def update_lead(row_number, updates):
     """
