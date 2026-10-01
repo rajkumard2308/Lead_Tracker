@@ -13,6 +13,8 @@ from google_sheet import (
     add_lead,
     update_lead,
     delete_lead,
+    _get_sheet_values,
+    _get_sheet_headers,
 )
 
 from components.dashboard import (
@@ -847,6 +849,27 @@ with header_right:
 
 
 # ============================================================
+# DATA REFRESH
+# ============================================================
+
+# Data is cached for 5 minutes to avoid repeated Google Sheets
+# API calls during normal Streamlit reruns. Use this button when
+# you need the latest spreadsheet data immediately.
+refresh_col1, refresh_col2 = st.columns([8, 1])
+
+with refresh_col2:
+    if st.button(
+        "🔄 Refresh",
+        use_container_width=True,
+        help="Reload the latest data from Google Sheets",
+    ):
+        get_leads.clear()
+        _get_sheet_values.clear()
+        _get_sheet_headers.clear()
+        st.rerun()
+
+
+# ============================================================
 # EDIT SUCCESS MESSAGE
 # ============================================================
 
@@ -897,6 +920,12 @@ required_columns = [
     "Follow Up Count",
     "Remarks",
     "_sheet_row",
+    "_date_dt",
+    "_check_in_dt",
+    "_check_out_dt",
+    "_status_norm",
+    "_agent_norm",
+    "_source_norm",
 ]
 
 for column in required_columns:
@@ -1066,11 +1095,7 @@ st.markdown(
 # CONVERT LEAD DATE
 # ------------------------------------------------------------
 
-lead_date_series = pd.to_datetime(
-    df["Date"],
-    format="%d-%m-%Y",
-    errors="coerce",
-)
+lead_date_series = df["_date_dt"]
 
 
 valid_lead_dates = lead_date_series.dropna()
@@ -1190,17 +1215,9 @@ st.markdown(
 # CONVERT CHECK-IN / CHECK-OUT DATES
 # ------------------------------------------------------------
 
-check_in_series = pd.to_datetime(
-    df["Check In Date"].astype(str).str.strip(),
-    format="%d-%m-%Y",
-    errors="coerce",
-)
+check_in_series = df["_check_in_dt"]
 
-check_out_series = pd.to_datetime(
-    df["Check Out Date"].astype(str).str.strip(),
-    format="%d-%m-%Y",
-    errors="coerce",
-)
+check_out_series = df["_check_out_dt"]
 
 
 valid_check_in_dates = check_in_series.dropna()
@@ -1295,26 +1312,9 @@ with stay_col3:
 # ============================================================
 
 # Normalize common filter columns once per rerun.
-status_series = (
-    df["Status"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
-
-agent_series = (
-    df["Agent"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
-
-source_series = (
-    df["Source"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
+status_series = df["_status_norm"]
+agent_series = df["_agent_norm"]
+source_series = df["_source_norm"]
 
 
 # ============================================================

@@ -4,6 +4,17 @@ from config import STATUSES
 from components.lead_card import render_lead_card
 
 
+BOARD_STATUS_ORDER = [
+    "Quotation Given",
+    "Follow up",
+    "Converted",
+    "No Availability",
+    "Out of Budget",
+    "Past Dated",
+    "Not Interested",
+]
+
+
 STATUS_ICONS = {
     "Follow up": "🟡",
     "Quotation Given": "🔵",
@@ -17,7 +28,7 @@ STATUS_ICONS = {
 def render_board(df):
 
     if "selected_status" not in st.session_state:
-        st.session_state["selected_status"] = "Follow up"
+        st.session_state["selected_status"] = "Quotation Given"
 
     # -------------------------------------------------
     # STATUS NAVIGATION
@@ -32,9 +43,9 @@ def render_board(df):
         unsafe_allow_html=True,
     )
 
-    status_columns = st.columns(len(STATUSES))
+    status_columns = st.columns(len(BOARD_STATUS_ORDER))
 
-    for index, status in enumerate(STATUSES):
+    for index, status in enumerate(BOARD_STATUS_ORDER):
 
         count = int(
             (

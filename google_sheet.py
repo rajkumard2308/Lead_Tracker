@@ -315,7 +315,7 @@ def _mapping(headers):
     }
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _get_sheet_values():
     """
     Read unformatted Google Sheet values.
@@ -339,7 +339,7 @@ def _get_sheet_headers():
     return list(values[0]) if values else []
 
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_leads():
     values = _get_sheet_values()
 
@@ -381,7 +381,50 @@ def get_leads():
         if column not in df.columns:
             df[column] = ""
 
-    return df[EXPECTED_COLUMNS + ["_sheet_row"]]
+    # Precompute values used by the Streamlit filters. These are
+    # calculated once per cache refresh instead of on every rerun.
+    df["_date_dt"] = pd.to_datetime(
+        df["Date"],
+        format="%d-%m-%Y",
+        errors="coerce",
+    )
+
+    df["_check_in_dt"] = pd.to_datetime(
+        df["Check In Date"],
+        format="%d-%m-%Y",
+        errors="coerce",
+    )
+
+    df["_check_out_dt"] = pd.to_datetime(
+        df["Check Out Date"],
+        format="%d-%m-%Y",
+        errors="coerce",
+    )
+
+    df["_status_norm"] = (
+        df["Status"].fillna("").astype(str).str.strip()
+    )
+
+    df["_agent_norm"] = (
+        df["Agent"].fillna("").astype(str).str.strip()
+    )
+
+    df["_source_norm"] = (
+        df["Source"].fillna("").astype(str).str.strip()
+    )
+
+    return df[
+        EXPECTED_COLUMNS
+        + [
+            "_sheet_row",
+            "_date_dt",
+            "_check_in_dt",
+            "_check_out_dt",
+            "_status_norm",
+            "_agent_norm",
+            "_source_norm",
+        ]
+    ]
 
 
 def _phone_exists(phone, exclude_row=None):

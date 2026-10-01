@@ -300,6 +300,7 @@ def render_add_lead_form():
         status = st.selectbox(
             "Pipeline Status",
             STATUSES,
+            index=STATUSES.index("Quotation Given"),
             key="add_status",
         )
 

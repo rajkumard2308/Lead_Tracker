@@ -182,13 +182,13 @@ def render_dashboard(df):
     )
 
     c[1].metric(
-        "FOLLOW UP",
-        counts.get("Follow up", 0)
+        "QUOTATION GIVEN",
+        counts.get("Quotation Given", 0)
     )
 
     c[2].metric(
-        "QUOTATION GIVEN",
-        counts.get("Quotation Given", 0)
+        "FOLLOW UP",
+        counts.get("Follow up", 0)
     )
 
     c[3].metric(
