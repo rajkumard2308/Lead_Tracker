@@ -13,8 +13,8 @@ STATUSES = [
     "Not Interested",
 ]
 
-AGENTS = ["Shweta", "Mayank", "Puneya"]
-SOURCES = ["Whatsapp business", "Website", "Instagram", "Facebook", "Google", "Call", "Other"]
+AGENTS = ["Shweta", "Mayank", "Punya"]
+SOURCES = ["Whatsapp business", "Eazotel", "Meta Park Cafe", "Meta EBC", "AiSensy", "Call", "Other"]
 FOLLOW_UP_OPTIONS = [f"Follow up {i}" for i in range(1, 21)]
 
 HEADERS = [
