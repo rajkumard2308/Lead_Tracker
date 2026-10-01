@@ -632,23 +632,23 @@ st.markdown(
     }
 
     /* ========================================================
-       HEADER ADD LEAD BUTTON
+       HEADER ACTION BUTTONS
     ======================================================== */
 
-    .add-lead-header-button {
+    .header-action {
         width: 100%;
-        min-width: 150px;
-        padding-top: 2px;
+        padding-top: 4px;
     }
 
-    .add-lead-header-button button {
+    .header-action button {
         width: 100% !important;
-        min-width: 150px !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         height: 42px !important;
-        padding: 0 16px !important;
+        padding: 0 8px !important;
         white-space: nowrap !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
         border-radius: 8px !important;
         font-size: 13px !important;
         font-weight: 700 !important;
@@ -669,13 +669,10 @@ st.markdown(
             font-size: 17px;
         }
 
-        .add-lead-header-button {
-            min-width: 130px;
-        }
-
-        .add-lead-header-button button {
-            min-width: 130px !important;
+        .header-action button {
             font-size: 12px !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
         }
 
     }
@@ -806,7 +803,13 @@ def edit_lead_dialog(row_number, record):
 # HEADER
 # ============================================================
 
-header_left, header_right = st.columns([5.0, 2.0], gap="medium")
+# Three top-level columns — no nested columns.
+# This prevents the Add Lead / Bulk Add buttons from being squeezed or clipped.
+header_left, add_col, bulk_col = st.columns(
+    [5.8, 1.45, 1.45],
+    gap="medium",
+    vertical_alignment="top",
+)
 
 with header_left:
     st.markdown(
@@ -817,26 +820,40 @@ with header_left:
         unsafe_allow_html=True,
     )
 
-with header_right:
-    add_col, bulk_col = st.columns(2)
+with add_col:
+    st.markdown('<div class="header-action">', unsafe_allow_html=True)
 
-    with add_col:
-        if st.button("➕ Add Lead", type="primary", use_container_width=True, key="header_add_lead"):
-            close_edit_form()
-            close_bulk_form()
-            st.session_state["deleting_row"] = None
-            clear_add_form_state()
-            st.session_state["show_add_form"] = True
-            st.session_state["add_form_open"] = True
-            st.rerun()
+    if st.button(
+        "➕ Add Lead",
+        type="primary",
+        use_container_width=True,
+        key="header_add_lead",
+    ):
+        close_edit_form()
+        close_bulk_form()
+        st.session_state["deleting_row"] = None
+        clear_add_form_state()
+        st.session_state["show_add_form"] = True
+        st.session_state["add_form_open"] = True
+        st.rerun()
 
-    with bulk_col:
-        if st.button("📥 Bulk Add", use_container_width=True, key="header_bulk_add"):
-            close_edit_form()
-            close_add_form()
-            st.session_state["deleting_row"] = None
-            st.session_state["show_bulk_form"] = True
-            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with bulk_col:
+    st.markdown('<div class="header-action">', unsafe_allow_html=True)
+
+    if st.button(
+        "📥 Bulk Add",
+        use_container_width=True,
+        key="header_bulk_add",
+    ):
+        close_edit_form()
+        close_add_form()
+        st.session_state["deleting_row"] = None
+        st.session_state["show_bulk_form"] = True
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ============================================================
