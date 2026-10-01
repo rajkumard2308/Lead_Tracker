@@ -53,8 +53,14 @@ st.set_page_config(
 if "show_add_form" not in st.session_state:
     st.session_state["show_add_form"] = False
 
+if "add_form_open" not in st.session_state:
+    st.session_state["add_form_open"] = False
+
 if "editing_row" not in st.session_state:
     st.session_state["editing_row"] = None
+
+if "edit_dialog_open" not in st.session_state:
+    st.session_state["edit_dialog_open"] = False
 
 if "deleting_row" not in st.session_state:
     st.session_state["deleting_row"] = None
@@ -91,6 +97,26 @@ ADD_FORM_KEYS = [
 def clear_add_form_state():
     for key in ADD_FORM_KEYS:
         st.session_state.pop(key, None)
+
+
+def close_add_form():
+    """Close Add Lead and clear all Add Lead widget state."""
+    clear_add_form_state()
+    st.session_state["show_add_form"] = False
+    st.session_state["add_form_open"] = False
+
+
+def close_edit_form():
+    """Close Edit Lead and clear all Edit Lead widget state."""
+    editing_row = st.session_state.get("editing_row")
+    if editing_row is not None:
+        try:
+            clear_edit_form_state(int(editing_row))
+        except Exception:
+            pass
+
+    st.session_state["editing_row"] = None
+    st.session_state["edit_dialog_open"] = False
 
 
 # ============================================================
@@ -739,8 +765,7 @@ def edit_lead_dialog(row_number, record):
                 updated_lead,
             )
 
-            clear_edit_form_state(int(row_number))
-            st.session_state["editing_row"] = None
+            close_edit_form()
 
             st.session_state[
                 "edit_success_message"
@@ -760,7 +785,7 @@ def edit_lead_dialog(row_number, record):
         key=f"cancel_edit_{row_number}",
     ):
 
-        st.session_state["editing_row"] = None
+        close_edit_form()
         st.rerun()
 
 
@@ -803,12 +828,15 @@ with header_right:
         key="header_add_lead",
     ):
 
-        if not st.session_state.get("show_add_form", False):
-            clear_add_form_state()
+        # Always start a fresh Add Lead form.
+        # Also close any stale Edit/Delete UI state so dialogs
+        # cannot reappear after opening or closing Add Lead.
+        close_edit_form()
+        st.session_state["deleting_row"] = None
+        clear_add_form_state()
 
-        st.session_state[
-            "show_add_form"
-        ] = True
+        st.session_state["show_add_form"] = True
+        st.session_state["add_form_open"] = True
 
         st.rerun()
 
@@ -881,9 +909,9 @@ for column in required_columns:
 # ADD LEAD FORM
 # ============================================================
 
-if st.session_state.get(
-    "show_add_form",
-    False,
+if (
+    st.session_state.get("show_add_form", False)
+    and st.session_state.get("add_form_open", False)
 ):
 
     st.markdown(
@@ -908,8 +936,7 @@ if st.session_state.get(
         # The Add Lead form can request cancellation without
         # sending the cancel action to Google Sheets.
         if new_lead.get("__action__") == "cancel":
-            clear_add_form_state()
-            st.session_state["show_add_form"] = False
+            close_add_form()
             st.rerun()
 
         try:
@@ -918,11 +945,7 @@ if st.session_state.get(
                 new_lead
             )
 
-            clear_add_form_state()
-
-            st.session_state[
-                "show_add_form"
-            ] = False
+            close_add_form()
 
             st.success(
                 "Lead added successfully."
@@ -1268,6 +1291,33 @@ with stay_col3:
     )
 
 # ============================================================
+# PRECOMPUTE FILTER SERIES
+# ============================================================
+
+# Normalize common filter columns once per rerun.
+status_series = (
+    df["Status"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+agent_series = (
+    df["Agent"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+source_series = (
+    df["Source"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+
+# ============================================================
 # APPLY FILTERS
 # ============================================================
 
@@ -1311,10 +1361,8 @@ if search.strip():
 
 if selected_status != "All Statuses":
 
-    filtered_df = filtered_df[
-        filtered_df["Status"]
-        .astype(str)
-        .str.strip()
+    filtered_df = filtered_df.loc[
+        status_series.loc[filtered_df.index]
         == selected_status
     ]
 
@@ -1325,10 +1373,8 @@ if selected_status != "All Statuses":
 
 if selected_agent != "All Agents":
 
-    filtered_df = filtered_df[
-        filtered_df["Agent"]
-        .astype(str)
-        .str.strip()
+    filtered_df = filtered_df.loc[
+        agent_series.loc[filtered_df.index]
         == selected_agent
     ]
 
@@ -1339,10 +1385,8 @@ if selected_agent != "All Agents":
 
 if selected_source != "All Sources":
 
-    filtered_df = filtered_df[
-        filtered_df["Source"]
-        .astype(str)
-        .str.strip()
+    filtered_df = filtered_df.loc[
+        source_series.loc[filtered_df.index]
         == selected_source
     ]
 
@@ -1353,12 +1397,10 @@ if selected_source != "All Sources":
 
 if filter_by_date:
 
-    # Convert current filtered rows to dates
-    current_dates = pd.to_datetime(
-        filtered_df["Date"],
-        format="%d-%m-%Y",
-        errors="coerce",
-    )
+    # Reuse the Lead Date series parsed above.
+    current_dates = lead_date_series.loc[
+        filtered_df.index
+    ]
 
 
     # --------------------------------------------------------
@@ -1386,8 +1428,14 @@ if filter_by_date:
 
         if date_from is not None:
 
-            filtered_df = filtered_df[
+            mask_from = (
                 current_dates.dt.date >= date_from
+            )
+
+            filtered_df = filtered_df.loc[mask_from]
+
+            current_dates = current_dates.loc[
+                filtered_df.index
             ]
 
 
@@ -1397,15 +1445,11 @@ if filter_by_date:
 
         if date_to is not None:
 
-            current_dates = pd.to_datetime(
-        filtered_df["Date"],
-        format="%d-%m-%Y",
-        errors="coerce",
-    )
-
-            filtered_df = filtered_df[
+            mask_to = (
                 current_dates.dt.date <= date_to
-            ]
+            )
+
+            filtered_df = filtered_df.loc[mask_to]
 
 # ============================================================
 # APPLY STAY DATE FILTER
@@ -1427,21 +1471,21 @@ if filter_by_stay_date:
 
     else:
 
-        current_check_in_dates = pd.to_datetime(
-            filtered_df["Check In Date"]
-            .astype(str)
-            .str.strip(),
-            format="%d-%m-%Y",
-            errors="coerce",
-        )
+        current_check_in_dates = check_in_series.loc[
+            filtered_df.index
+        ]
 
         # ----------------------------------------------------
         # FILTER BY CHECK-IN DATE
         # ----------------------------------------------------
 
-        filtered_df = filtered_df[
+        check_in_mask = (
             current_check_in_dates.dt.date
             == check_in_filter
+        )
+
+        filtered_df = filtered_df.loc[
+            check_in_mask
         ]
 
         # ----------------------------------------------------
@@ -1450,17 +1494,17 @@ if filter_by_stay_date:
 
         if check_out_filter is not None:
 
-            current_check_out_dates = pd.to_datetime(
-                filtered_df["Check Out Date"]
-                .astype(str)
-                .str.strip(),
-                format="%d-%m-%Y",
-                errors="coerce",
-            )
+            current_check_out_dates = check_out_series.loc[
+                filtered_df.index
+            ]
 
-            filtered_df = filtered_df[
+            check_out_mask = (
                 current_check_out_dates.dt.date
                 == check_out_filter
+            )
+
+            filtered_df = filtered_df.loc[
+                check_out_mask
             ]
 
 # ============================================================
@@ -1525,12 +1569,9 @@ with tab_board:
     if (
         last_board_status is not None
         and current_board_status != last_board_status
-        and st.session_state.get("editing_row") is not None
+        and st.session_state.get("edit_dialog_open", False)
     ):
-        clear_edit_form_state(
-            int(st.session_state["editing_row"])
-        )
-        st.session_state["editing_row"] = None
+        close_edit_form()
 
     st.session_state[
         "_last_board_status"
@@ -1555,11 +1596,18 @@ with tab_board:
 
             row_number = int(row_number)
 
+            # Close any other transient UI before opening Edit.
+            close_add_form()
+            st.session_state["deleting_row"] = None
             clear_edit_form_state(row_number)
 
             st.session_state[
                 "editing_row"
             ] = row_number
+
+            st.session_state[
+                "edit_dialog_open"
+            ] = True
 
             st.rerun()
 
@@ -1569,6 +1617,9 @@ with tab_board:
         # ====================================================
 
         elif action == "delete":
+
+            close_add_form()
+            close_edit_form()
 
             st.session_state[
                 "deleting_row"
@@ -1717,8 +1768,16 @@ editing_row = st.session_state.get(
     "editing_row"
 )
 
+edit_dialog_open = st.session_state.get(
+    "edit_dialog_open",
+    False,
+)
 
-if editing_row is not None:
+
+if (
+    editing_row is not None
+    and edit_dialog_open
+):
 
     edit_record = df[
         df["_sheet_row"].astype(int)
@@ -1727,7 +1786,7 @@ if editing_row is not None:
 
     if edit_record.empty:
 
-        st.session_state["editing_row"] = None
+        close_edit_form()
 
         st.warning(
             "The selected lead could not be found in Google Sheets."
@@ -1750,4 +1809,3 @@ st.caption(
     f"{len(df)} leads • "
     "Google Sheets is the shared source of truth."
 )
-

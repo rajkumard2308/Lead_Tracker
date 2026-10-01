@@ -211,8 +211,8 @@ def _parse_date_value(value):
 
             if 20000 <= serial <= 70000:
                 return (
-                    datetime(1899, 12, 30)
-                    + timedelta(days=serial)
+                        datetime(1899, 12, 30)
+                        + timedelta(days=serial)
                 ).date()
     except (ValueError, OverflowError):
         pass
@@ -221,8 +221,8 @@ def _parse_date_value(value):
     if " " in text:
         first_part = text.split(" ", 1)[0]
         if re.fullmatch(
-            r"\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}",
-            first_part,
+                r"\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}",
+                first_part,
         ):
             text = first_part
 
@@ -304,17 +304,18 @@ def normalize_phone(phone):
     return digits
 
 
-def _mapping(ws):
+def _mapping(headers):
+    """Build a canonical header -> 1-based column mapping."""
     return {
         _norm(header): index
         for index, header in enumerate(
-            ws.row_values(1),
+            headers,
             start=1,
         )
     }
 
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def _get_sheet_values():
     """
     Read unformatted Google Sheet values.
@@ -331,7 +332,14 @@ def _get_sheet_values():
     )
 
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
+def _get_sheet_headers():
+    """Return cached raw sheet headers."""
+    values = _get_sheet_values()
+    return list(values[0]) if values else []
+
+
+@st.cache_data(ttl=60, show_spinner=False)
 def get_leads():
     values = _get_sheet_values()
 
@@ -353,8 +361,8 @@ def get_leads():
         }
 
         if not any(
-            str(value).strip()
-            for value in record.values()
+                str(value).strip()
+                for value in record.values()
         ):
             continue
 
@@ -376,24 +384,29 @@ def get_leads():
     return df[EXPECTED_COLUMNS + ["_sheet_row"]]
 
 
-def _phone_exists(ws, phone, exclude_row=None):
+def _phone_exists(phone, exclude_row=None):
     normalized_phone = normalize_phone(phone)
 
     if not normalized_phone:
         return False
 
-    mapping = _mapping(ws)
+    values = _get_sheet_values()
+
+    if not values:
+        return False
+
+    headers = values[0]
+    mapping = _mapping(headers)
     phone_column = mapping.get("Number")
 
     if not phone_column:
         return False
 
-    values = _get_sheet_values()
-
     for sheet_row, row in enumerate(values[1:], start=2):
+
         if (
-            exclude_row is not None
-            and sheet_row == int(exclude_row)
+                exclude_row is not None
+                and sheet_row == int(exclude_row)
         ):
             continue
 
@@ -411,16 +424,19 @@ def _phone_exists(ws, phone, exclude_row=None):
 def _clear_data_caches():
     get_leads.clear()
     _get_sheet_values.clear()
+    _get_sheet_headers.clear()
 
 
 def add_lead(lead):
     ws = get_worksheet()
-    mapping = _mapping(ws)
-    headers = ws.row_values(1)
+
+    values = _get_sheet_values()
+    headers = list(values[0]) if values else list(HEADERS)
+    mapping = _mapping(headers)
 
     phone = lead.get("Number", "")
 
-    if _phone_exists(ws, phone):
+    if _phone_exists(phone):
         raise ValueError(
             "Phone number already exists. "
             "This customer is already present."
@@ -429,12 +445,15 @@ def add_lead(lead):
     row = [""] * len(headers)
 
     for field, value in lead.items():
+
+        if field.startswith("__"):
+            continue
+
         column = mapping.get(field)
+
         if column:
             row[column - 1] = _clean(value)
 
-    # RAW is intentional: date strings such as 11-10-2026
-    # are not reinterpreted using the Google Sheet locale.
     ws.append_row(
         row,
         value_input_option="RAW",
@@ -445,63 +464,86 @@ def add_lead(lead):
 
 def update_lead(row_number, updates):
     """
-    Update a complete existing row in one Google Sheets
-    request.
+    Update a complete existing row in one Google Sheets request.
 
-    This is deliberately implemented as a full-row update
-    instead of multiple update_cell() calls. It also makes
-    date updates reliable because all form values are written
-    together.
+    The current row is taken from the cached sheet snapshot,
+    avoiding an additional row_values() request.
     """
     ws = get_worksheet()
     row_number = int(row_number)
-    mapping = _mapping(ws)
-    headers = ws.row_values(1)
 
     if row_number < 2:
         raise ValueError(
             "Invalid row number. Header row cannot be updated."
         )
 
+    values = _get_sheet_values()
+
+    if not values:
+        raise ValueError(
+            "Google Sheet data could not be read."
+        )
+
+    headers = list(values[0])
+    mapping = _mapping(headers)
+
     if "Number" in updates:
+
         phone = updates.get("Number", "")
 
         if _phone_exists(
-            ws,
-            phone,
-            exclude_row=row_number,
+                phone,
+                exclude_row=row_number,
         ):
             raise ValueError(
                 "Phone number already exists "
                 "for another customer."
             )
 
-    # Read the current row so fields not included in updates
-    # are preserved.
-    current_row = ws.row_values(row_number)
+    row_index = row_number - 1
+
+    if row_index >= len(values):
+        raise ValueError(
+            "The selected lead no longer exists in Google Sheets."
+        )
+
+    current_row = list(values[row_index])
 
     if len(current_row) < len(headers):
         current_row += [""] * (
-            len(headers) - len(current_row)
+                len(headers) - len(current_row)
         )
     elif len(current_row) > len(headers):
         current_row = current_row[:len(headers)]
 
     for field, value in updates.items():
+
+        if field.startswith("__"):
+            continue
+
         column = mapping.get(field)
 
         if column:
             current_row[column - 1] = _clean(value)
 
-    # One API request for the complete row.
     def column_letter(number):
         result = ""
+
         while number:
-            number, remainder = divmod(number - 1, 26)
-            result = chr(65 + remainder) + result
+            number, remainder = divmod(
+                number - 1,
+                26,
+            )
+            result = (
+                    chr(65 + remainder)
+                    + result
+            )
+
         return result
 
-    last_column = column_letter(len(headers))
+    last_column = column_letter(
+        len(headers)
+    )
 
     ws.update(
         f"A{row_number}:{last_column}{row_number}",
