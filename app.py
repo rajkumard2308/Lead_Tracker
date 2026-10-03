@@ -1700,12 +1700,8 @@ with tab_board:
 
                 if new_status == "Follow up":
 
-                    update_data[
-                        "Follow Up Count"
-                    ] = result.get(
-                        "follow_up_count",
-                        "Follow up 1",
-                    )
+                    update_data["Follow Up Count"] = result.get("follow_up_count","Follow up 1",)
+                    update_data["Last Follow Up"] = result.get("last_follow_up")
 
 
                 # ------------------------------------------------
@@ -1714,9 +1710,8 @@ with tab_board:
 
                 else:
 
-                    update_data[
-                        "Follow Up Count"
-                    ] = ""
+                    update_data["Follow Up Count"] = ""
+                    update_data["Last Follow Up"] = ""
 
 
                 update_lead(

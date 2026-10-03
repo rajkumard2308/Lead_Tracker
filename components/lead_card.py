@@ -1,6 +1,7 @@
 import html
 import streamlit as st
 import streamlit.components.v1 as components
+import pandas as pd
 
 from config import STATUSES
 
@@ -257,12 +258,12 @@ def render_lead_card(record):
 
         columns = st.columns(
             [
+                1.25,
+                1.35,
+                1.40,
                 1.35,
                 1.55,
-                1.55,
-                1.55,
-                1.45,
-                1.25,
+                2.10,
             ]
         )
 
@@ -450,19 +451,54 @@ def render_lead_card(record):
                 current_follow_index = 0
 
                 if follow_count in FOLLOW_UP_OPTIONS:
-
-                    current_follow_index = (
-                        FOLLOW_UP_OPTIONS.index(
-                            follow_count
-                        )
+                    current_follow_index = FOLLOW_UP_OPTIONS.index(
+                        follow_count
                     )
 
-                selected_followup = st.selectbox(
-                    "Follow-up Count",
-                    FOLLOW_UP_OPTIONS,
-                    index=current_follow_index,
-                    key=f"followup_{row_number}",
+                # ------------------------------------------------
+                # LAST FOLLOW-UP DATE + FOLLOW-UP COUNT
+                # ------------------------------------------------
+                follow_date_col, follow_count_col = st.columns(
+                    [1.35, 1.25]
                 )
+
+                with follow_date_col:
+
+                    existing_followup_date = None
+
+                    if last_followup:
+                        try:
+                            existing_followup_date = pd.to_datetime(
+                                last_followup,
+                                dayfirst=True,
+                                errors="coerce",
+                            )
+
+                            if pd.isna(existing_followup_date):
+                                existing_followup_date = None
+                            else:
+                                existing_followup_date = existing_followup_date.date()
+
+                        except Exception:
+                            existing_followup_date = None
+
+                    selected_last_followup = st.date_input(
+                        "Last Follow-up Done On",
+                        value=existing_followup_date,
+                        format="DD-MM-YYYY",
+                        key=f"last_followup_{row_number}",
+                        label_visibility="visible",
+                    )
+
+                with follow_count_col:
+
+                    selected_followup = st.selectbox(
+                        "Follow-up Count",
+                        FOLLOW_UP_OPTIONS,
+                        index=current_follow_index,
+                        key=f"followup_{row_number}",
+                        label_visibility="visible",
+                    )
 
             else:
 
@@ -472,17 +508,32 @@ def render_lead_card(record):
                     else ""
                 )
 
+                selected_last_followup = None
+
             # ----------------------------------------
             # UPDATE
             # ----------------------------------------
 
             changed = (
-                new_status != current_status
-                or (
-                    new_status == "Follow up"
-                    and selected_followup
-                    != follow_count
-                )
+                    new_status != current_status
+                    or (
+                            new_status == "Follow up"
+                            and selected_followup != follow_count
+                    )
+                    or (
+                            new_status == "Follow up"
+                            and (
+                                    (
+                                            selected_last_followup is not None
+                                            and str(selected_last_followup)
+                                            != str(last_followup)
+                                    )
+                                    or (
+                                            selected_last_followup is None
+                                            and last_followup
+                                    )
+                            )
+                    )
             )
 
             if changed:
@@ -503,6 +554,11 @@ def render_lead_card(record):
                             if new_status
                             == "Follow up"
                             else ""
+                        ),
+                        "last_follow_up": (
+                            selected_last_followup
+                            if new_status == "Follow up"
+                            else None
                         ),
                     }
 
