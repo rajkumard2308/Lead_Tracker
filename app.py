@@ -1101,7 +1101,7 @@ with f4:
 
 
 # ============================================================
-# DATE FILTER
+# LEAD DATE FILTER
 # ============================================================
 
 st.markdown(
@@ -1115,23 +1115,24 @@ st.markdown(
 # ------------------------------------------------------------
 
 lead_date_series = pd.to_datetime(
-    df["Date"],
-    format="%d-%m-%Y",
+    df["Date"].astype(str).str.strip(),
+    dayfirst=True,
     errors="coerce",
 )
 
 
-valid_lead_dates = lead_date_series.dropna()
-
-
 # ------------------------------------------------------------
-# DATE FILTER ENABLE/DISABLE
+# LEAD DATE FILTER COLUMNS
 # ------------------------------------------------------------
 
 date_filter_col1, date_filter_col2, date_filter_col3 = (
     st.columns([1.2, 1.6, 1.6])
 )
 
+
+# ------------------------------------------------------------
+# ENABLE LEAD DATE FILTER
+# ------------------------------------------------------------
 
 with date_filter_col1:
 
@@ -1142,57 +1143,18 @@ with date_filter_col1:
 
 
 # ------------------------------------------------------------
-# DEFAULT DATE RANGE
-# ------------------------------------------------------------
-
-if not valid_lead_dates.empty:
-
-    min_lead_date = (
-        valid_lead_dates
-        .min()
-        .date()
-    )
-
-    max_lead_date = (
-        valid_lead_dates
-        .max()
-        .date()
-    )
-
-else:
-
-    min_lead_date = None
-    max_lead_date = None
-
-
-# ------------------------------------------------------------
 # FROM DATE
 # ------------------------------------------------------------
 
 with date_filter_col2:
 
-    if min_lead_date is not None:
-
-        date_from = st.date_input(
-            "From Date",
-            value=min_lead_date,
-            min_value=min_lead_date,
-            max_value=max_lead_date,
-            disabled=not filter_by_date,
-            format="DD-MM-YYYY",
-            key="filter_date_from",
-        )
-
-    else:
-
-        date_from = None
-
-        st.date_input(
-            "From Date",
-            value=None,
-            disabled=True,
-            key="filter_date_from_empty",
-        )
+    date_from = st.date_input(
+        "From Date",
+        value=None,
+        disabled=not filter_by_date,
+        format="DD-MM-YYYY",
+        key="filter_date_from",
+    )
 
 
 # ------------------------------------------------------------
@@ -1201,28 +1163,66 @@ with date_filter_col2:
 
 with date_filter_col3:
 
-    if max_lead_date is not None:
+    date_to = st.date_input(
+        "To Date",
+        value=None,
+        disabled=not filter_by_date,
+        format="DD-MM-YYYY",
+        key="filter_date_to",
+    )
 
-        date_to = st.date_input(
-            "To Date",
-            value=max_lead_date,
-            min_value=min_lead_date,
-            max_value=max_lead_date,
-            disabled=not filter_by_date,
-            format="DD-MM-YYYY",
-            key="filter_date_to",
-        )
 
-    else:
+st.markdown(
+    "<div class='date-filter-title'>🔔 Follow-up Filter</div>",
+    unsafe_allow_html=True,
+)
 
-        date_to = None
+follow_up_col1, follow_up_col2, follow_up_col3 = st.columns(
+    [1.2, 1.6, 1.6]
+)
 
-        st.date_input(
-            "To Date",
-            value=None,
-            disabled=True,
-            key="filter_date_to_empty",
-        )
+with follow_up_col1:
+    filter_by_follow_up = st.checkbox(
+        "Filter by Follow-up",
+        key="filter_by_follow_up",
+    )
+
+with follow_up_col2:
+    follow_up_from_date = st.date_input(
+        "Last Follow-up From Date",
+        value=None,
+        disabled=not filter_by_follow_up,
+        format="DD-MM-YYYY",
+        key="filter_follow_up_from_date",
+    )
+
+with follow_up_col3:
+    follow_up_count_options = (
+        ["All Follow-up Counts"]
+        + [f"Follow up {i}" for i in range(1, 9)]
+    )
+
+    selected_follow_up_count = st.selectbox(
+        "Follow-up Count",
+        follow_up_count_options,
+        disabled=not filter_by_follow_up,
+        key="filter_follow_up_count",
+    )
+
+
+# ------------------------------------------------------------
+# FOLLOW-UP COUNT
+# ------------------------------------------------------------
+
+with follow_up_col3:
+
+    follow_up_count_options = [
+        "All Follow-up Counts"
+    ] + [
+        f"Follow up {i}"
+        for i in range(1, 9)
+    ]
+
 
 # ============================================================
 # STAY DATE FILTER
@@ -1240,18 +1240,15 @@ st.markdown(
 
 check_in_series = pd.to_datetime(
     df["Check In Date"].astype(str).str.strip(),
-    format="%d-%m-%Y",
+    dayfirst=True,
     errors="coerce",
 )
 
 check_out_series = pd.to_datetime(
     df["Check Out Date"].astype(str).str.strip(),
-    format="%d-%m-%Y",
+    dayfirst=True,
     errors="coerce",
 )
-
-
-valid_check_in_dates = check_in_series.dropna()
 
 
 # ------------------------------------------------------------
@@ -1281,41 +1278,13 @@ with stay_col1:
 
 with stay_col2:
 
-    if not valid_check_in_dates.empty:
-
-        min_check_in_date = (
-            valid_check_in_dates
-            .min()
-            .date()
-        )
-
-        max_check_in_date = (
-            valid_check_in_dates
-            .max()
-            .date()
-        )
-
-        check_in_filter = st.date_input(
-            "Check-in Date *",
-            value=min_check_in_date,
-            min_value=min_check_in_date,
-            max_value=max_check_in_date,
-            disabled=not filter_by_stay_date,
-            format="DD-MM-YYYY",
-            key="filter_check_in_date",
-        )
-
-    else:
-
-        check_in_filter = None
-
-        st.date_input(
-            "Check-in Date *",
-            value=None,
-            disabled=True,
-            format="DD-MM-YYYY",
-            key="filter_check_in_date_empty",
-        )
+    check_in_filter = st.date_input(
+        "Check-in Date *",
+        value=None,
+        disabled=not filter_by_stay_date,
+        format="DD-MM-YYYY",
+        key="filter_check_in_date",
+    )
 
 
 # ------------------------------------------------------------
@@ -1327,12 +1296,6 @@ with stay_col3:
     check_out_filter = st.date_input(
         "Check-out Date (Optional)",
         value=None,
-        min_value=(
-            check_in_filter
-            if filter_by_stay_date
-            and check_in_filter is not None
-            else None
-        ),
         disabled=not filter_by_stay_date,
         format="DD-MM-YYYY",
         key="filter_check_out_date",
@@ -1498,6 +1461,43 @@ if filter_by_date:
             )
 
             filtered_df = filtered_df.loc[mask_to]
+
+# ---------------------------------------------------------
+# FOLLOW-UP FILTER
+# Based specifically on LAST FOLLOW-UP date
+# ---------------------------------------------------------
+if filter_by_follow_up:
+
+    # Convert Google Sheet "Last Follow Up" values
+    # into real dates.
+    last_follow_up_dates = pd.to_datetime(
+        filtered_df["Last Follow Up"]
+        .fillna("")
+        .astype(str)
+        .str.strip(),
+        dayfirst=True,
+        errors="coerce",
+    )
+
+    # Filter by LAST FOLLOW-UP FROM DATE
+    if follow_up_from_date is not None:
+        follow_up_mask = (
+            last_follow_up_dates.dt.date >= follow_up_from_date
+        )
+
+        filtered_df = filtered_df.loc[follow_up_mask]
+
+    # Filter by FOLLOW-UP COUNT
+    if selected_follow_up_count != "All Follow-up Counts":
+        follow_up_count_mask = (
+            filtered_df["Follow Up Count"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            == selected_follow_up_count
+        )
+
+        filtered_df = filtered_df.loc[follow_up_count_mask]
 
 # ============================================================
 # APPLY STAY DATE FILTER
