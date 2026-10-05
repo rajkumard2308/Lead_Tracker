@@ -1482,7 +1482,7 @@ if filter_by_follow_up:
     # Filter by LAST FOLLOW-UP FROM DATE
     if follow_up_from_date is not None:
         follow_up_mask = (
-            last_follow_up_dates.dt.date >= follow_up_from_date
+            last_follow_up_dates.dt.date == follow_up_from_date
         )
 
         filtered_df = filtered_df.loc[follow_up_mask]
