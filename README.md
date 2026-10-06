@@ -5,7 +5,7 @@ This version fixes the Windows PyArrow/DLL crash by removing `st.dataframe()` fr
 Changes:
 - Agent dropdown: Shweta, Mayank, Puneya
 - Booking Confirmation Date calendar
-- Pipeline Status includes Past Dated
+- Pipeline Status includes Ghosted
 - Lead Source includes Call
 - Referral and Walk-in removed
 - Last Follow-up Done On calendar

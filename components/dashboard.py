@@ -20,7 +20,9 @@ def _amount(value):
         "25000.50"
         "₹25,000.50"
     """
+
     try:
+
         if value is None:
             return 0.0
 
@@ -41,7 +43,8 @@ def _amount(value):
 
         # Remove currency symbol and commas
         text = (
-            text.replace("₹", "")
+            text
+            .replace("₹", "")
             .replace(",", "")
             .replace(" ", "")
         )
@@ -53,6 +56,7 @@ def _amount(value):
         return float(text)
 
     except (ValueError, TypeError):
+
         return 0.0
 
 
@@ -61,7 +65,7 @@ def _amount(value):
 # ---------------------------------------------------------
 def _format_revenue(value):
     """
-    Format revenue without Streamlit truncating the value.
+    Format revenue using Indian number formatting.
 
     Examples:
         5000       -> ₹5,000
@@ -71,30 +75,49 @@ def _format_revenue(value):
     """
 
     try:
+
         value = float(value)
+
     except (ValueError, TypeError):
+
         value = 0.0
 
     # Indian number formatting
     amount = round(value)
 
     if amount < 1000:
+
         formatted = str(amount)
+
     else:
+
         number = str(amount)
+
         last_three = number[-3:]
+
         remaining = number[:-3]
 
         parts = []
 
         while len(remaining) > 2:
-            parts.insert(0, remaining[-2:])
+
+            parts.insert(
+                0,
+                remaining[-2:]
+            )
+
             remaining = remaining[:-2]
 
         if remaining:
-            parts.insert(0, remaining)
 
-        formatted = ",".join(parts + [last_three])
+            parts.insert(
+                0,
+                remaining
+            )
+
+        formatted = ",".join(
+            parts + [last_three]
+        )
 
     return f"₹{formatted}"
 
@@ -108,18 +131,34 @@ def render_dashboard(df):
     # Safety check
     # -----------------------------------------------------
     if df is None or df.empty:
-        counts = {s: 0 for s in STATUSES}
+
+        counts = {
+            s: 0
+            for s in STATUSES
+        }
+
         total = 0
+
         converted = 0
+
         rate = 0.0
+
         revenue = 0.0
 
     else:
 
+        # -------------------------------------------------
         # Make sure Status exists
+        # -------------------------------------------------
         if "Status" not in df.columns:
-            status_series = pd.Series("", index=df.index)
+
+            status_series = pd.Series(
+                "",
+                index=df.index
+            )
+
         else:
+
             status_series = (
                 df["Status"]
                 .fillna("")
@@ -131,14 +170,28 @@ def render_dashboard(df):
         # Status counts
         # -------------------------------------------------
         counts = {
-            s: int((status_series == s).sum())
+            s: int(
+                (status_series == s).sum()
+            )
             for s in STATUSES
         }
 
+        # -------------------------------------------------
+        # Total leads
+        # -------------------------------------------------
         total = len(df)
 
-        converted = counts.get("Converted", 0)
+        # -------------------------------------------------
+        # Converted leads
+        # -------------------------------------------------
+        converted = counts.get(
+            "Converted",
+            0
+        )
 
+        # -------------------------------------------------
+        # Conversion rate
+        # -------------------------------------------------
         rate = (
             converted / total * 100
             if total > 0
@@ -147,13 +200,16 @@ def render_dashboard(df):
 
         # -------------------------------------------------
         # Total Revenue
-        # Only Converted leads are included
+        #
+        # Only Converted leads are included.
         # -------------------------------------------------
         revenue = 0.0
 
         if "Total Amount" in df.columns:
 
-            converted_mask = status_series == "Converted"
+            converted_mask = (
+                status_series == "Converted"
+            )
 
             if converted_mask.any():
 
@@ -169,50 +225,127 @@ def render_dashboard(df):
     # -----------------------------------------------------
     # Revenue display
     # -----------------------------------------------------
-    revenue_display = _format_revenue(revenue)
+    revenue_display = _format_revenue(
+        revenue
+    )
+
+    # =====================================================
+    # DASHBOARD METRICS
+    # =====================================================
+    #
+    # ROW 1:
+    # TOTAL LEADS
+    # QUOTATION GIVEN
+    # FOLLOW UP
+    # CONVERTED
+    # NO AVAILABILITY
+    #
+    # ROW 2:
+    # OUT OF BUDGET
+    # GHOSTED
+    # NOT INTERESTED
+    # TOTAL REVENUE
+    # CONVERSION
+    # =====================================================
 
     # -----------------------------------------------------
-    # Dashboard metrics
+    # ROW 1
     # -----------------------------------------------------
-    c = st.columns(7)
+    row1 = st.columns(5)
 
-    c[0].metric(
-        "TOTAL LEADS",
-        total
-    )
+    with row1[0]:
 
-    c[1].metric(
-        "QUOTATION GIVEN",
-        counts.get("Quotation Given", 0)
-    )
+        st.metric(
+            "TOTAL LEADS",
+            total
+        )
 
-    c[2].metric(
-        "FOLLOW UP",
-        counts.get("Follow up", 0)
-    )
+    with row1[1]:
 
-    # Show converted leads as:
-    #   CONVERTED
-    #   9 / 97
-    #   ↑ 9.3%
-    # where 9 is converted leads and 97 is total leads.
-    c[3].metric(
-        "CONVERTED",
-        f"{converted} / {total}",
-        f"{rate:.1f}%"
-    )
+        st.metric(
+            "QUOTATION GIVEN",
+            counts.get(
+                "Quotation Given",
+                0
+            )
+        )
 
-    c[4].metric(
-        "NO AVAILABILITY",
-        counts.get("No Availability", 0)
-    )
+    with row1[2]:
 
-    c[5].metric(
-        "OUT OF BUDGET",
-        counts.get("Out of Budget", 0)
-    )
+        st.metric(
+            "FOLLOW UP",
+            counts.get(
+                "Follow up",
+                0
+            )
+        )
 
-    c[6].metric(
-        "TOTAL REVENUE",
-        revenue_display
-    )
+    with row1[3]:
+
+        # Converted shows ONLY the number.
+        # Example: 22
+        st.metric(
+            "CONVERTED",
+            converted
+        )
+
+    with row1[4]:
+
+        st.metric(
+            "NO AVAILABILITY",
+            counts.get(
+                "No Availability",
+                0
+            )
+        )
+
+    # -----------------------------------------------------
+    # ROW 2
+    # -----------------------------------------------------
+    row2 = st.columns(5)
+
+    with row2[0]:
+
+        st.metric(
+            "OUT OF BUDGET",
+            counts.get(
+                "Out of Budget",
+                0
+            )
+        )
+
+    with row2[1]:
+
+        st.metric(
+            "GHOSTED",
+            counts.get(
+                "Ghosted",
+                0
+            )
+        )
+
+    with row2[2]:
+
+        st.metric(
+            "NOT INTERESTED",
+            counts.get(
+                "Not Interested",
+                0
+            )
+        )
+
+    with row2[3]:
+
+        st.metric(
+            "TOTAL REVENUE",
+            revenue_display
+        )
+
+    with row2[4]:
+
+        # Conversion shows ONLY percentage.
+        # Example: 4.3%
+        st.metric(
+            "CONVERSION",
+            f"{rate:.1f}%"
+        )

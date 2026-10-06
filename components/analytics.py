@@ -325,5 +325,5 @@ def render_analytics(df):
 
         st.warning(
             f"⚠️ {ghosted} lead(s) "
-            "are currently marked as Past Dated."
+            "are currently marked as Ghosted."
         )
