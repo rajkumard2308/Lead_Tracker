@@ -32,10 +32,8 @@ from components.lead_form import (
     clear_edit_form_state,
 )
 
-from components.analytics import (
-    render_analytics,
-)
-
+from components.analytics import render_analytics
+from components.analytics_charts import render_analytics_charts
 from components.bulk_upload import render_bulk_upload
 
 
@@ -1210,18 +1208,18 @@ with follow_up_col3:
     )
 
 
-# ------------------------------------------------------------
-# FOLLOW-UP COUNT
-# ------------------------------------------------------------
-
-with follow_up_col3:
-
-    follow_up_count_options = [
-        "All Follow-up Counts"
-    ] + [
-        f"Follow up {i}"
-        for i in range(1, 9)
-    ]
+# # ------------------------------------------------------------
+# # FOLLOW-UP COUNT
+# # ------------------------------------------------------------
+#
+# with follow_up_col3:
+#
+#     follow_up_count_options = [
+#         "All Follow-up Counts"
+#     ] + [
+#         f"Follow up {i}"
+#         for i in range(1, 9)
+#     ]
 
 
 # ============================================================
@@ -1586,10 +1584,11 @@ st.divider()
 # TABS
 # ============================================================
 
-tab_board, tab_analytics = st.tabs(
+tab_board, tab_analytics, tab_charts = st.tabs(
     [
         "📋 Conversion Board",
         "📊 Agent Performance & Insights",
+        "📈 Analytics",
     ]
 )
 
@@ -1799,6 +1798,16 @@ if deleting_row is not None:
 with tab_analytics:
 
     render_analytics(
+        filtered_df
+    )
+
+# ============================================================
+# ANALYTICS CHARTS
+# ============================================================
+
+with tab_charts:
+
+    render_analytics_charts(
         filtered_df
     )
 
