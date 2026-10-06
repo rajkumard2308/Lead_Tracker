@@ -10,7 +10,7 @@ BOARD_STATUS_ORDER = [
     "Converted",
     "No Availability",
     "Out of Budget",
-    "Past Dated",
+    "Ghosted",
     "Not Interested",
 ]
 
@@ -21,7 +21,7 @@ STATUS_ICONS = {
     "Converted": "🟢",
     "No Availability": "⚪",
     "Out of Budget": "🔴",
-    "Past Dated": "🟣",
+    "Ghosted": "🟣",
 }
 
 

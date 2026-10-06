@@ -93,8 +93,8 @@ def render_analytics(df):
         (status_series == "Follow up").sum()
     )
 
-    past_dated = int(
-        (status_series == "Past Dated").sum()
+    ghosted = int(
+        (status_series == "Ghosted").sum()
     )
 
     conversion_rate = (
@@ -318,12 +318,12 @@ def render_analytics(df):
             )
 
     # =================================================
-    # PAST DATED ALERT
+    # GHOSTED ALERT
     # =================================================
 
-    if past_dated > 0:
+    if ghosted > 0:
 
         st.warning(
-            f"⚠️ {past_dated} lead(s) "
+            f"⚠️ {ghosted} lead(s) "
             "are currently marked as Past Dated."
         )

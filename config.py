@@ -9,7 +9,7 @@ STATUSES = [
     "Converted",
     "No Availability",
     "Out of Budget",
-    "Past Dated",
+    "Ghosted",
     "Not Interested",
 ]
 
