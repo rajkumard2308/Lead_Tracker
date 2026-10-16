@@ -759,7 +759,7 @@ def delete_lead_dialog(row_number, lead_name):
 # EDIT DIALOG
 # ============================================================
 
-@st.dialog("✏️ Edit Lead")
+@st.dialog("✏️ Edit Lead", on_dismiss=close_edit_form)
 def edit_lead_dialog(row_number, record):
 
     updated_lead = render_edit_lead_form(record)
