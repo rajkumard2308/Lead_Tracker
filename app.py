@@ -1098,6 +1098,7 @@ with f4:
     )
 
 
+
 # ============================================================
 # LEAD DATE FILTER
 # ============================================================
@@ -1107,10 +1108,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-# ------------------------------------------------------------
-# CONVERT LEAD DATE
-# ------------------------------------------------------------
+today = pd.Timestamp.now(tz="Asia/Kolkata").date()
 
 lead_date_series = pd.to_datetime(
     df["Date"].astype(str).str.strip(),
@@ -1118,65 +1116,125 @@ lead_date_series = pd.to_datetime(
     errors="coerce",
 )
 
+PAST_DATE_RANGES = [
+    "Custom range",
+    "Last 7 days",
+    "Last 30 days",
+    "Last 3 months",
+]
 
-# ------------------------------------------------------------
-# LEAD DATE FILTER COLUMNS
-# ------------------------------------------------------------
+FUTURE_DATE_RANGES = [
+    "Custom range",
+    "Next 7 days",
+    "Next 30 days",
+    "Next 3 months",
+]
 
-date_filter_col1, date_filter_col2, date_filter_col3 = (
-    st.columns([1.2, 1.6, 1.6])
+
+def _last_range_start(selection):
+    """Return the inclusive starting date of a past range."""
+    if selection == "Last 7 days":
+        return (pd.Timestamp(today) - pd.Timedelta(days=6)).date()
+
+    if selection == "Last 30 days":
+        return (pd.Timestamp(today) - pd.Timedelta(days=29)).date()
+
+    if selection == "Last 3 months":
+        return (
+            pd.Timestamp(today) - pd.DateOffset(months=3)
+        ).date()
+
+    return None
+
+
+def _next_range_end(selection):
+    """Return the inclusive ending date of a future range."""
+    if selection == "Next 7 days":
+        return (pd.Timestamp(today) + pd.Timedelta(days=6)).date()
+
+    if selection == "Next 30 days":
+        return (pd.Timestamp(today) + pd.Timedelta(days=29)).date()
+
+    if selection == "Next 3 months":
+        return (
+            pd.Timestamp(today) + pd.DateOffset(months=3)
+        ).date()
+
+    return None
+
+
+def _reset_lead_date_preset():
+    st.session_state["lead_date_quick_range"] = "Custom range"
+
+
+def _reset_follow_up_preset():
+    st.session_state["follow_up_quick_range"] = "Custom range"
+
+
+def _reset_stay_date_preset():
+    st.session_state["stay_quick_range"] = "Custom range"
+
+
+# ============================================================
+# LEAD DATE FILTER CONTROLS
+# ============================================================
+
+lead_filter_enabled_col, lead_quick_col, date_filter_col2, date_filter_col3 = (
+    st.columns([1.2, 1.5, 1.6, 1.6])
 )
 
-
-# ------------------------------------------------------------
-# ENABLE LEAD DATE FILTER
-# ------------------------------------------------------------
-
-with date_filter_col1:
-
+with lead_filter_enabled_col:
     filter_by_date = st.checkbox(
         "Filter by Lead Date",
         key="filter_by_date",
     )
 
+with lead_quick_col:
+    lead_date_quick_range = st.selectbox(
+        "Quick range",
+        PAST_DATE_RANGES,
+        key="lead_date_quick_range",
+        disabled=not filter_by_date,
+    )
 
-# ------------------------------------------------------------
-# FROM DATE
-# ------------------------------------------------------------
+    if filter_by_date and lead_date_quick_range != "Custom range":
+        st.session_state["filter_date_from"] = _last_range_start(
+            lead_date_quick_range
+        )
+        st.session_state["filter_date_to"] = today
 
 with date_filter_col2:
-
     date_from = st.date_input(
         "From Date",
         value=None,
         disabled=not filter_by_date,
         format="DD-MM-YYYY",
         key="filter_date_from",
+        on_change=_reset_lead_date_preset,
     )
 
-
-# ------------------------------------------------------------
-# TO DATE
-# ------------------------------------------------------------
-
 with date_filter_col3:
-
     date_to = st.date_input(
         "To Date",
         value=None,
         disabled=not filter_by_date,
         format="DD-MM-YYYY",
         key="filter_date_to",
+        on_change=_reset_lead_date_preset,
     )
 
+
+# ============================================================
+# FOLLOW-UP FILTER
+# ============================================================
 
 st.markdown(
     "<div class='date-filter-title'>🔔 Follow-up Filter</div>",
     unsafe_allow_html=True,
 )
 
-follow_up_col1, follow_up_col2, follow_up_col3 = st.columns(
-    [1.2, 1.6, 1.6]
+follow_up_col1, follow_up_quick_col, follow_up_col2, follow_up_col3 = (
+    st.columns([1.2, 1.5, 1.6, 1.6])
 )
 
 with follow_up_col1:
@@ -1185,6 +1243,19 @@ with follow_up_col1:
         key="filter_by_follow_up",
     )
 
+with follow_up_quick_col:
+    follow_up_quick_range = st.selectbox(
+        "Quick range",
+        PAST_DATE_RANGES,
+        key="follow_up_quick_range",
+        disabled=not filter_by_follow_up,
+    )
+
+    if filter_by_follow_up and follow_up_quick_range != "Custom range":
+        st.session_state["filter_follow_up_from_date"] = (
+            _last_range_start(follow_up_quick_range)
+        )
+
 with follow_up_col2:
     follow_up_from_date = st.date_input(
         "Last Follow-up From Date",
@@ -1192,6 +1263,7 @@ with follow_up_col2:
         disabled=not filter_by_follow_up,
         format="DD-MM-YYYY",
         key="filter_follow_up_from_date",
+        on_change=_reset_follow_up_preset,
     )
 
 with follow_up_col3:
@@ -1208,20 +1280,6 @@ with follow_up_col3:
     )
 
 
-# # ------------------------------------------------------------
-# # FOLLOW-UP COUNT
-# # ------------------------------------------------------------
-#
-# with follow_up_col3:
-#
-#     follow_up_count_options = [
-#         "All Follow-up Counts"
-#     ] + [
-#         f"Follow up {i}"
-#         for i in range(1, 9)
-#     ]
-
-
 # ============================================================
 # STAY DATE FILTER
 # ============================================================
@@ -1230,11 +1288,6 @@ st.markdown(
     "<div class='date-filter-title'>🏨 Stay Date Filter</div>",
     unsafe_allow_html=True,
 )
-
-
-# ------------------------------------------------------------
-# CONVERT CHECK-IN / CHECK-OUT DATES
-# ------------------------------------------------------------
 
 check_in_series = pd.to_datetime(
     df["Check In Date"].astype(str).str.strip(),
@@ -1248,56 +1301,50 @@ check_out_series = pd.to_datetime(
     errors="coerce",
 )
 
-
-# ------------------------------------------------------------
-# STAY FILTER COLUMNS
-# ------------------------------------------------------------
-
-stay_col1, stay_col2, stay_col3 = st.columns(
-    [1.2, 1.6, 1.6]
+stay_col1, stay_quick_col, stay_col2, stay_col3 = st.columns(
+    [1.2, 1.5, 1.6, 1.6]
 )
 
-
-# ------------------------------------------------------------
-# ENABLE STAY DATE FILTER
-# ------------------------------------------------------------
-
 with stay_col1:
-
     filter_by_stay_date = st.checkbox(
         "Filter by Stay Date",
         key="filter_by_stay_date",
     )
 
+with stay_quick_col:
+    stay_quick_range = st.selectbox(
+        "Quick range",
+        FUTURE_DATE_RANGES,
+        key="stay_quick_range",
+        disabled=not filter_by_stay_date,
+    )
 
-# ------------------------------------------------------------
-# CHECK-IN DATE
-# ------------------------------------------------------------
+    if filter_by_stay_date and stay_quick_range != "Custom range":
+        st.session_state["filter_check_in_date"] = today
+        st.session_state["filter_check_out_date"] = _next_range_end(
+            stay_quick_range
+        )
 
 with stay_col2:
-
     check_in_filter = st.date_input(
-        "Check-in Date *",
+        "Check-in Date",
         value=None,
         disabled=not filter_by_stay_date,
         format="DD-MM-YYYY",
         key="filter_check_in_date",
+        on_change=_reset_stay_date_preset,
     )
 
-
-# ------------------------------------------------------------
-# CHECK-OUT DATE - OPTIONAL
-# ------------------------------------------------------------
-
 with stay_col3:
-
     check_out_filter = st.date_input(
-        "Check-out Date (Optional)",
+        "Check-out Date",
         value=None,
         disabled=not filter_by_stay_date,
         format="DD-MM-YYYY",
         key="filter_check_out_date",
+        on_change=_reset_stay_date_preset,
     )
+
 
 # ============================================================
 # PRECOMPUTE FILTER SERIES
@@ -1400,74 +1447,43 @@ if selected_source != "All Sources":
     ]
 
 
+
 # ============================================================
-# APPLY DATE FILTER
+# APPLY LEAD DATE FILTER
 # ============================================================
 
 if filter_by_date:
 
-    # Reuse the Lead Date series parsed above.
-    current_dates = lead_date_series.loc[
-        filtered_df.index
-    ]
-
-
-    # --------------------------------------------------------
-    # INVALID RANGE
-    # --------------------------------------------------------
+    current_dates = lead_date_series.loc[filtered_df.index]
 
     if (
         date_from is not None
         and date_to is not None
         and date_from > date_to
     ):
-
-        st.error(
-            "⚠️ From Date cannot be later than To Date."
-        )
-
+        st.error("⚠️ From Date cannot be later than To Date.")
         filtered_df = filtered_df.iloc[0:0]
 
-
     else:
-
-        # ----------------------------------------------------
-        # FROM DATE
-        # ----------------------------------------------------
-
         if date_from is not None:
-
-            mask_from = (
+            filtered_df = filtered_df.loc[
                 current_dates.dt.date >= date_from
-            )
+            ]
 
-            filtered_df = filtered_df.loc[mask_from]
+            current_dates = current_dates.loc[filtered_df.index]
 
-            current_dates = current_dates.loc[
-                filtered_df.index
+        if date_to is not None:
+            filtered_df = filtered_df.loc[
+                current_dates.dt.date <= date_to
             ]
 
 
-        # ----------------------------------------------------
-        # TO DATE
-        # ----------------------------------------------------
+# ============================================================
+# APPLY FOLLOW-UP FILTER
+# ============================================================
 
-        if date_to is not None:
-
-            mask_to = (
-                current_dates.dt.date <= date_to
-            )
-
-            filtered_df = filtered_df.loc[mask_to]
-
-# ---------------------------------------------------------
-# FOLLOW-UP FILTER
-# Based specifically on LAST FOLLOW-UP date
-# ---------------------------------------------------------
 if filter_by_follow_up:
 
-    # Convert Google Sheet "Last Follow Up" values
-    # into real dates.
     last_follow_up_dates = pd.to_datetime(
         filtered_df["Last Follow Up"]
         .fillna("")
@@ -1477,16 +1493,25 @@ if filter_by_follow_up:
         errors="coerce",
     )
 
-    # Filter by LAST FOLLOW-UP FROM DATE
     if follow_up_from_date is not None:
-        follow_up_mask = (
-            last_follow_up_dates.dt.date == follow_up_from_date
-        )
+
+        if follow_up_quick_range != "Custom range":
+            # Quick range: include dates from the selected start
+            # through today, inclusive.
+            follow_up_mask = (
+                (last_follow_up_dates.dt.date >= follow_up_from_date)
+                & (last_follow_up_dates.dt.date <= today)
+            )
+        else:
+            # Preserve the existing custom-date behavior.
+            follow_up_mask = (
+                last_follow_up_dates.dt.date == follow_up_from_date
+            )
 
         filtered_df = filtered_df.loc[follow_up_mask]
 
-    # Filter by FOLLOW-UP COUNT
     if selected_follow_up_count != "All Follow-up Counts":
+
         follow_up_count_mask = (
             filtered_df["Follow Up Count"]
             .fillna("")
@@ -1497,61 +1522,53 @@ if filter_by_follow_up:
 
         filtered_df = filtered_df.loc[follow_up_count_mask]
 
+
 # ============================================================
 # APPLY STAY DATE FILTER
 # ============================================================
 
 if filter_by_stay_date:
 
-    # --------------------------------------------------------
-    # CHECK-IN DATE IS MANDATORY
-    # --------------------------------------------------------
-
     if check_in_filter is None:
-
-        st.error(
-            "⚠️ Please select a Check-in Date."
-        )
-
+        st.error("⚠️ Please select a Check-in Date.")
         filtered_df = filtered_df.iloc[0:0]
 
-    else:
+    elif (
+        check_out_filter is not None
+        and check_in_filter > check_out_filter
+    ):
+        st.error("⚠️ Check-out Date cannot be earlier than Check-in Date.")
+        filtered_df = filtered_df.iloc[0:0]
 
+    elif check_out_filter is None:
+        # If only one date is selected, match that exact check-in date.
         current_check_in_dates = check_in_series.loc[
             filtered_df.index
         ]
 
-        # ----------------------------------------------------
-        # FILTER BY CHECK-IN DATE
-        # ----------------------------------------------------
-
-        check_in_mask = (
-            current_check_in_dates.dt.date
-            == check_in_filter
-        )
-
         filtered_df = filtered_df.loc[
-            check_in_mask
+            current_check_in_dates.notna()
+            & (current_check_in_dates.dt.date == check_in_filter)
         ]
 
-        # ----------------------------------------------------
-        # FILTER BY CHECK-OUT DATE ONLY IF SELECTED
-        # ----------------------------------------------------
+    else:
+        # Include every booking whose stay overlaps the selected window.
+        current_check_in_dates = check_in_series.loc[
+            filtered_df.index
+        ]
 
-        if check_out_filter is not None:
+        current_check_out_dates = check_out_series.loc[
+            filtered_df.index
+        ]
 
-            current_check_out_dates = check_out_series.loc[
-                filtered_df.index
-            ]
+        stay_mask = (
+            current_check_in_dates.notna()
+            & current_check_out_dates.notna()
+            & (current_check_in_dates.dt.date <= check_out_filter)
+            & (current_check_out_dates.dt.date >= check_in_filter)
+        )
 
-            check_out_mask = (
-                current_check_out_dates.dt.date
-                == check_out_filter
-            )
-
-            filtered_df = filtered_df.loc[
-                check_out_mask
-            ]
+        filtered_df = filtered_df.loc[stay_mask]
 
 # ============================================================
 # FILTER SUMMARY
