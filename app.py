@@ -1529,46 +1529,43 @@ if filter_by_follow_up:
 
 if filter_by_stay_date:
 
-    if check_in_filter is None:
-        st.error("⚠️ Please select a Check-in Date.")
-        filtered_df = filtered_df.iloc[0:0]
-
-    elif (
-        check_out_filter is not None
+    if (
+        check_in_filter is not None
+        and check_out_filter is not None
         and check_in_filter > check_out_filter
     ):
         st.error("⚠️ Check-out Date cannot be earlier than Check-in Date.")
         filtered_df = filtered_df.iloc[0:0]
 
-    elif check_out_filter is None:
-        # If only one date is selected, match that exact check-in date.
-        current_check_in_dates = check_in_series.loc[
-            filtered_df.index
-        ]
-
-        filtered_df = filtered_df.loc[
-            current_check_in_dates.notna()
-            & (current_check_in_dates.dt.date == check_in_filter)
-        ]
-
     else:
-        # Include every booking whose stay overlaps the selected window.
-        current_check_in_dates = check_in_series.loc[
-            filtered_df.index
-        ]
+        current_check_in_dates = check_in_series.loc[filtered_df.index]
+        current_check_out_dates = check_out_series.loc[filtered_df.index]
 
-        current_check_out_dates = check_out_series.loc[
-            filtered_df.index
-        ]
+        if check_in_filter is not None and check_out_filter is None:
+            # Only check-in selected: show bookings checking in on that exact day.
+            stay_mask = (
+                current_check_in_dates.notna()
+                & (current_check_in_dates.dt.date == check_in_filter)
+            )
+            filtered_df = filtered_df.loc[stay_mask]
 
-        stay_mask = (
-            current_check_in_dates.notna()
-            & current_check_out_dates.notna()
-            & (current_check_in_dates.dt.date <= check_out_filter)
-            & (current_check_out_dates.dt.date >= check_in_filter)
-        )
+        elif check_in_filter is None and check_out_filter is not None:
+            # Only check-out selected: show bookings checking out on that exact day.
+            stay_mask = (
+                current_check_out_dates.notna()
+                & (current_check_out_dates.dt.date == check_out_filter)
+            )
+            filtered_df = filtered_df.loc[stay_mask]
 
-        filtered_df = filtered_df.loc[stay_mask]
+        elif check_in_filter is not None and check_out_filter is not None:
+            # Both dates selected: booking must be fully contained in the range.
+            stay_mask = (
+                current_check_in_dates.notna()
+                & current_check_out_dates.notna()
+                & (current_check_in_dates.dt.date >= check_in_filter)
+                & (current_check_out_dates.dt.date <= check_out_filter)
+            )
+            filtered_df = filtered_df.loc[stay_mask]
 
 # ============================================================
 # FILTER SUMMARY
