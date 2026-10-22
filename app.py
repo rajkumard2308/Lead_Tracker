@@ -1042,62 +1042,58 @@ with f1:
     )
 
 
+
 # ------------------------------------------------------------
-# STATUS
+# STATUS - MULTISELECT
 # ------------------------------------------------------------
 
 with f2:
-
-    selected_status = st.selectbox(
+    selected_status = st.multiselect(
         "Status",
-        ["All Statuses"] + STATUSES,
+        options=STATUSES,
+        placeholder="All Statuses",
         label_visibility="collapsed",
         key="filter_status",
     )
 
 
 # ------------------------------------------------------------
-# AGENT
+# AGENT - MULTISELECT
 # ------------------------------------------------------------
 
 with f3:
-
-    agents = ["All Agents"]
+    agents = []
 
     if not df.empty:
-
-        agents += sorted(
+        agents = sorted(
             [
                 str(x).strip()
-                for x in df["Agent"]
-                .dropna()
-                .unique()
+                for x in df["Agent"].dropna().unique()
                 if str(x).strip()
             ]
         )
 
-    selected_agent = st.selectbox(
+    selected_agent = st.multiselect(
         "Agent",
-        agents,
+        options=agents,
+        placeholder="All Agents",
         label_visibility="collapsed",
         key="filter_agent",
     )
 
 
 # ------------------------------------------------------------
-# SOURCE
+# SOURCE - MULTISELECT
 # ------------------------------------------------------------
 
 with f4:
-
-    selected_source = st.selectbox(
+    selected_source = st.multiselect(
         "Source",
-        ["All Sources"] + SOURCES,
+        options=SOURCES,
+        placeholder="All Sources",
         label_visibility="collapsed",
         key="filter_source",
     )
-
-
 
 # ============================================================
 # LEAD DATE FILTER
@@ -1412,40 +1408,33 @@ if search.strip():
 
 
 # ------------------------------------------------------------
-# STATUS
+# STATUS - MULTISELECT FILTER
 # ------------------------------------------------------------
 
-if selected_status != "All Statuses":
-
+if selected_status:
     filtered_df = filtered_df.loc[
-        status_series.loc[filtered_df.index]
-        == selected_status
+        status_series.loc[filtered_df.index].isin(selected_status)
     ]
 
 
 # ------------------------------------------------------------
-# AGENT
+# AGENT - MULTISELECT FILTER
 # ------------------------------------------------------------
 
-if selected_agent != "All Agents":
-
+if selected_agent:
     filtered_df = filtered_df.loc[
-        agent_series.loc[filtered_df.index]
-        == selected_agent
+        agent_series.loc[filtered_df.index].isin(selected_agent)
     ]
 
 
 # ------------------------------------------------------------
-# SOURCE
+# SOURCE - MULTISELECT FILTER
 # ------------------------------------------------------------
 
-if selected_source != "All Sources":
-
+if selected_source:
     filtered_df = filtered_df.loc[
-        source_series.loc[filtered_df.index]
-        == selected_source
+        source_series.loc[filtered_df.index].isin(selected_source)
     ]
-
 
 
 # ============================================================
