@@ -41,6 +41,7 @@ EXPECTED_COLUMNS = [
     "Follow Up Count",
     "Remarks",
     "Total Amount",
+    "City of Residence",
 ]
 
 
@@ -99,6 +100,8 @@ def ensure_headers(ws):
 
         if "Total Amount" not in normalized:
             headers.append("Total Amount")
+        if "City of Residence" not in normalized:
+            headers.append("City of Residence")
 
         ws.update(
             "A1",
@@ -113,6 +116,7 @@ def ensure_headers(ws):
         ("Booking Confirmation Date", "BOOKING CONFIRMATION DATE"),
         ("Follow Up Count", "Follow Up Count"),
         ("Total Amount", "Total Amount"),
+        ("City of Residence", "City of Residence"),
     ]
 
     missing = [

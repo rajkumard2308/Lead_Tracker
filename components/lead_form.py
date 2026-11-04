@@ -162,6 +162,7 @@ def clear_edit_form_state(row_number):
         "edit_followup_count",
         "edit_remarks",
         "edit_total_amount",
+        "edit_city_residence",
     ]
 
     for prefix in prefixes:
@@ -496,6 +497,8 @@ def render_edit_lead_form(record):
         f"edit_total_amount_{row_number}"
     )
 
+    city_key = f"edit_city_residence_{row_number}"
+
     initialized_key = (
         f"edit_initialized_{row_number}"
     )
@@ -641,6 +644,10 @@ def render_edit_lead_form(record):
             record.get(
                 "Total Amount"
             )
+        )
+
+        st.session_state[city_key] = str(
+            record.get("City of Residence", "") or ""
         )
 
         st.session_state[
@@ -806,19 +813,30 @@ def render_edit_lead_form(record):
     )
 
     # -----------------------------------------------------
-    # Total amount
+    # CONVERTED DETAILS
     # -----------------------------------------------------
 
     total_amount = 0.0
+    city_of_residence = ""
 
     if status == "Converted":
-        total_amount = st.number_input(
-            "Total Amount (₹)",
-            min_value=0.0,
-            step=100.0,
-            format="%.2f",
-            key=amount_key,
-        )
+        a, b = st.columns(2)
+
+        with a:
+            total_amount = st.number_input(
+                "Total Amount (₹)",
+                min_value=0.0,
+                step=100.0,
+                format="%.2f",
+                key=amount_key,
+            )
+
+        with b:
+            city_of_residence = st.text_input(
+                "City of Residence",
+                placeholder="e.g. Delhi, Mumbai, Jaipur",
+                key=city_key,
+            )
 
     # -----------------------------------------------------
     # SAVE
@@ -876,6 +894,11 @@ def render_edit_lead_form(record):
         "Remarks": remarks.strip(),
         "Total Amount": (
             total_amount
+            if status == "Converted"
+            else ""
+        ),
+        "City of Residence": (
+            city_of_residence.strip()
             if status == "Converted"
             else ""
         ),
