@@ -248,6 +248,13 @@ def render_lead_card(record):
         ) or ""
     )
 
+    city_of_residence = str(
+        record.get(
+            "City of Residence",
+            ""
+        ) or ""
+    ).strip()
+
     # ------------------------------------------------
     # LEAD ROW
     # ------------------------------------------------
@@ -291,6 +298,12 @@ def render_lead_card(record):
             if current_status == "Converted":
                 st.markdown(
                     f"**₹ {total_amount:,.2f}**"
+                )
+
+            # Display City of Residence below amount
+            if city_of_residence:
+                st.markdown(
+                    f"🏙️ **{html.escape(city_of_residence)}**"
                 )
 
         # ============================================
