@@ -1106,6 +1106,14 @@ st.markdown(
 
 today = pd.Timestamp.now(tz="Asia/Kolkata").date()
 
+yesterday = (
+    pd.Timestamp(today) - pd.Timedelta(days=1)
+).date()
+
+tomorrow = (
+    pd.Timestamp(today) + pd.Timedelta(days=1)
+).date()
+
 lead_date_series = pd.to_datetime(
     df["Date"].astype(str).str.strip(),
     dayfirst=True,
@@ -1128,12 +1136,17 @@ FUTURE_DATE_RANGES = [
 
 
 def _last_range_start(selection):
-    """Return the inclusive starting date of a past range."""
+    """Return the starting date, excluding today."""
+
     if selection == "Last 7 days":
-        return (pd.Timestamp(today) - pd.Timedelta(days=6)).date()
+        return (
+            pd.Timestamp(today) - pd.Timedelta(days=7)
+        ).date()
 
     if selection == "Last 30 days":
-        return (pd.Timestamp(today) - pd.Timedelta(days=29)).date()
+        return (
+            pd.Timestamp(today) - pd.Timedelta(days=30)
+        ).date()
 
     if selection == "Last 3 months":
         return (
@@ -1144,12 +1157,17 @@ def _last_range_start(selection):
 
 
 def _next_range_end(selection):
-    """Return the inclusive ending date of a future range."""
+    """Return the ending date, starting from tomorrow."""
+
     if selection == "Next 7 days":
-        return (pd.Timestamp(today) + pd.Timedelta(days=6)).date()
+        return (
+            pd.Timestamp(today) + pd.Timedelta(days=7)
+        ).date()
 
     if selection == "Next 30 days":
-        return (pd.Timestamp(today) + pd.Timedelta(days=29)).date()
+        return (
+            pd.Timestamp(today) + pd.Timedelta(days=30)
+        ).date()
 
     if selection == "Next 3 months":
         return (
@@ -1197,7 +1215,7 @@ with lead_quick_col:
         st.session_state["filter_date_from"] = _last_range_start(
             lead_date_quick_range
         )
-        st.session_state["filter_date_to"] = today
+        st.session_state["filter_date_to"] = yesterday
 
 with date_filter_col2:
     date_from = st.date_input(
@@ -1316,7 +1334,7 @@ with stay_quick_col:
     )
 
     if filter_by_stay_date and stay_quick_range != "Custom range":
-        st.session_state["filter_check_in_date"] = today
+        st.session_state["filter_check_in_date"] = tomorrow
         st.session_state["filter_check_out_date"] = _next_range_end(
             stay_quick_range
         )
@@ -1486,10 +1504,10 @@ if filter_by_follow_up:
 
         if follow_up_quick_range != "Custom range":
             # Quick range: include dates from the selected start
-            # through today, inclusive.
+            # through yesterday, excluding today.
             follow_up_mask = (
-                (last_follow_up_dates.dt.date >= follow_up_from_date)
-                & (last_follow_up_dates.dt.date <= today)
+                    (last_follow_up_dates.dt.date >= follow_up_from_date)
+                    & (last_follow_up_dates.dt.date <= yesterday)
             )
         else:
             # Preserve the existing custom-date behavior.
