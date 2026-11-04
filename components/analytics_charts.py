@@ -1261,6 +1261,140 @@ def render_analytics_charts(df):
 
     st.divider()
 
+    # ============================================================
+    # CITY OF RESIDENCE DISTRIBUTION
+    # ============================================================
+
+    def _render_leads_by_city(df):
+
+        if df is None or df.empty:
+            return
+
+        if "City of Residence" not in df.columns:
+            st.info(
+                "City of Residence column is not available."
+            )
+            return
+
+        # Count all leads, irrespective of pipeline status
+        working_df = df.copy()
+        # Clean city names
+        working_df["City of Residence"] = (
+            working_df["City of Residence"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        working_df = working_df[
+            working_df["City of Residence"] != ""
+            ]
+
+        if working_df.empty:
+            st.info(
+                "No city information available for converted leads yet."
+            )
+            return
+
+        # Count leads city-wise
+        city_counts = (
+            working_df["City of Residence"]
+            .str.title()
+            .value_counts()
+            .sort_values(ascending=False)
+        )
+
+        cities = city_counts.index.tolist()
+        values = city_counts.values.tolist()
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Bar(
+                x=cities,
+                y=values,
+
+                marker=dict(
+                    color="#06B6D4",
+                ),
+
+                text=[
+                    str(int(v))
+                    for v in values
+                ],
+
+                textposition="outside",
+                cliponaxis=False,
+
+                hovertemplate=(
+                    "<b>%{x}</b>"
+                    "<br>Total Leads: "
+                    "<b>%{y}</b>"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+        max_value = int(max(values))
+
+        fig.update_layout(
+            **_base_layout(
+                "Leads by City of Residence",
+                height=500,
+                x_title="City of Residence",
+                y_title="Number of Leads",
+            ),
+
+            showlegend=False,
+
+            xaxis=dict(
+                title="City of Residence",
+                tickangle=-35,
+                tickfont=dict(
+                    color=MUTED_TEXT,
+                    size=11,
+                ),
+                showgrid=False,
+                automargin=True,
+            ),
+
+            yaxis=dict(
+                title="Number of Leads",
+                rangemode="tozero",
+                range=[
+                    0,
+                    max(5, int(max_value * 1.2) + 1),
+                ],
+                dtick=1,
+                gridcolor=GRID_COLOR,
+                tickfont=dict(
+                    color=MUTED_TEXT,
+                ),
+            ),
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displaylogo": False,
+                "responsive": True,
+            },
+            key="analytics_leads_by_city",
+        )
+
+    # ========================================================
+    # CITY OF RESIDENCE DISTRIBUTION
+    # ========================================================
+
+    st.markdown(
+        "### 🏙️ City of Residence vs Leads Count"
+    )
+
+    _render_leads_by_city(df)
+
+    st.divider()
+
     # ========================================================
     # 5. FOLLOW-UP COUNT DISTRIBUTION
     # ========================================================

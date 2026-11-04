@@ -905,6 +905,7 @@ required_columns = [
     "Follow Up Count",
     "Remarks",
     "_sheet_row",
+    "City of Residence",
 ]
 
 for column in required_columns:

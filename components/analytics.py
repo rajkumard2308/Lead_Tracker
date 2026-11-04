@@ -269,6 +269,73 @@ def render_analytics(df):
     st.divider()
 
     # =================================================
+    # CITY OF RESIDENCE VS LEAD COUNT
+    # =================================================
+
+    st.subheader("🏙️ City of Residence vs Leads Count")
+
+    if "City of Residence" not in df.columns:
+
+        st.info(
+            "City of Residence column is not available."
+        )
+
+    else:
+
+        city_series = (
+            df["City of Residence"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.title()
+        )
+
+        # Remove empty city values
+        city_series = city_series[
+            city_series != ""
+        ]
+
+        if city_series.empty:
+
+            st.info(
+                "No City of Residence data available yet."
+            )
+
+        else:
+
+            # Count leads city-wise
+            city_counts = (
+                city_series
+                .value_counts()
+                .rename_axis("City of Residence")
+                .reset_index(name="Leads Count")
+            )
+
+            # Sort highest lead count first
+            city_counts = city_counts.sort_values(
+                by="Leads Count",
+                ascending=False,
+            )
+
+            # Display bar chart
+            st.bar_chart(
+                city_counts,
+                x="City of Residence",
+                y="Leads Count",
+                color="#06B6D4",
+                height=400,
+            )
+
+            # Display city-wise count table
+            st.dataframe(
+                city_counts,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    st.divider()
+
+    # =================================================
     # FOLLOW-UP INSIGHTS
     # =================================================
 
