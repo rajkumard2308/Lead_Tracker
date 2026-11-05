@@ -97,6 +97,7 @@ ADD_FORM_KEYS = [
     "add_followup_count",
     "add_remarks",
     "add_total_amount",
+    "add_city_residence",
 ]
 
 

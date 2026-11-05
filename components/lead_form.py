@@ -363,16 +363,27 @@ def render_add_lead_form():
     )
 
     total_amount = 0.0
+    city_of_residence = ""
 
     if status == "Converted":
-        total_amount = st.number_input(
-            "Total Amount (₹)",
-            min_value=0.0,
-            value=0.0,
-            step=100.0,
-            format="%.2f",
-            key="add_total_amount",
-        )
+        amount_col, city_col = st.columns(2)
+
+        with amount_col:
+            total_amount = st.number_input(
+                "Total Amount (₹)",
+                min_value=0.0,
+                value=0.0,
+                step=100.0,
+                format="%.2f",
+                key="add_total_amount",
+            )
+
+        with city_col:
+            city_of_residence = st.text_input(
+                "City of Residence",
+                placeholder="e.g. Delhi, Noida, Mumbai",
+                key="add_city_residence",
+            )
 
     add_col, cancel_col = st.columns(2)
 
@@ -437,6 +448,11 @@ def render_add_lead_form():
         "Remarks": remarks.strip(),
         "Total Amount": (
             total_amount
+            if status == "Converted"
+            else ""
+        ),
+        "City of Residence": (
+            city_of_residence.strip()
             if status == "Converted"
             else ""
         ),
@@ -554,6 +570,17 @@ def render_edit_lead_form(record):
         current_agent = str(
             record.get("Agent", "")
             or ""
+        )
+        # Initialize the actual saved Pipeline Status
+        current_status = str(
+            record.get("Status", "")
+            or ""
+        ).strip()
+
+        st.session_state[status_key] = (
+            current_status
+            if current_status in STATUSES
+            else STATUSES[0]
         )
 
         st.session_state[
