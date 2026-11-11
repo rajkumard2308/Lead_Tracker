@@ -256,7 +256,7 @@ def render_add_lead_form():
             "Check In Date",
             key="add_check_in_date",
             format="DD-MM-YYYY",
-            min_value=today,
+            # min_value=today,
             on_change=_update_add_checkout,
         )
 
@@ -412,9 +412,9 @@ def render_add_lead_form():
         st.error("Phone number is required.")
         return None
 
-    if check_in and check_in < today:
-        st.error("Check-in date cannot be in the past.")
-        return None
+    # if check_in and check_in < today:
+    #     st.error("Check-in date cannot be in the past.")
+    #     return None
 
     if (
         check_in
